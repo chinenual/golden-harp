@@ -153,4 +153,3 @@ void loop()
   }
   Serial.write("*");  // same as .print("*",BYTE); it seems
 }
-
