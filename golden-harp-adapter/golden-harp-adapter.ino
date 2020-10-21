@@ -8,7 +8,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#define NUM_OF_BYTES 128
 #define LATCH_PIN 2
 #define CLOCK_PIN 3
 #define DEBUG_INPUT 0
@@ -218,6 +217,7 @@ void keyOut(int key) {
     Serial.println();
   }
 }
+
 void loop()
 {
   for (int i = 0; i < 64; i++) {
