@@ -1,9 +1,9 @@
-// pins for MIDI connector, left to right, back view, tab on bottom
+// pins for Harp Controller Keyboard DIN connector, left to right, back view, tab on bottom
 // 1 = D3
 // 2 = D8
 // 3 = GND
 // 4 = 5V
-// 5 = D2 
+// 5 = D2
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -13,7 +13,7 @@
 #define CLOCK_PIN 3
 
 volatile byte bitIndex, bitIndexB;
-volatile byte bufferA[NUM_OF_BYTES*2];  // Hopefully enough?
+volatile byte bufferA[NUM_OF_BYTES * 2]; // Hopefully enough?
 volatile byte lastState, currentState;
 volatile boolean bitLatched;
 volatile byte bufferSelect;
@@ -21,9 +21,9 @@ volatile byte switchBuffer;
 volatile byte latchDecimator;
 volatile boolean okToClock;
 
-void setup() 
-{                
-  Serial.begin(115200);
+void setup()
+{
+  Serial.begin(9600); //115200);
   pinMode(2, OUTPUT); // latch
   pinMode(3, OUTPUT); // clock
   pinMode(8, INPUT); // read
@@ -38,16 +38,16 @@ int noteTable[64] = {
   25, //2
   14, //3
   23, //4
-   3, //5
-   4, //6
+  3, //5
+  4, //6
   13, //7
   -1, //8
   22, //9
   27, //10
   12, //11
   21, //12
-   5, //13
-   6, //14
+  5, //13
+  6, //14
   11, //15
   -1, //16
   51, //17
@@ -86,32 +86,94 @@ int noteTable[64] = {
   28, //50
   10, //51
   19, //52
-   7, //53
-   8, //54
-   9, //55
+  7, //53
+  8, //54
+  9, //55
   -1, //56
   47, //57
   26, //58
   45, //59
   46, //60
-   1, //61
-   2, //62
+  1, //61
+  2, //62
   44, //63
 };
+
+// Keyboard mapping
+//   C0:  0:0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:
+//   Db0: 0:0:128:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   D0:  (missing key)
+//   Eb0: 0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:0:
+//   E0:
+//   F0:
+//   Gb0:
+//   G0:
+//   Ab0:
+//   A0:
+//   Bf0:
+//   B0:
+//   C1:
+//   Db1:
+//   D1:
+//   Eb1:
+//   E1:
+//   F1:
+//   Gb1:
+//   G1:
+//   Ab1:
+//   A1:
+//   Bf1:
+//   B1:
+//   C2:
+//   Db2:
+//   D2:
+//   Eb2:
+//   E2:
+//   F2:
+//   Gb2:
+//   G2:
+//   Ab2:
+//   A2:
+//   Bf2:
+//   B2:
+//   C3:
+//   Db3:
+//   D3:
+//   Eb3:
+//   E3:
+//   F3:
+//   Gb3:
+//   G3:
+//   Ab3:
+//   A3:
+//   Bf3:
+//   B3:
+//   C4:
+//   Db4:
+//   D4:
+//   Eb4:
+//   E4:
+//   F4:
+//   Gb4:
+//   G4:
+//   Ab4:
+//   A4:
+//   Bf4:
+//   B4:
 
 void addNote(int noteValue, int notes[]) {
   notes[0] += 1;
   int insertIndex = notes[0];
-  notes[insertIndex] = noteValue; 
+  notes[insertIndex] = noteValue;
 }
 
 void convertByteToNote(byte hardwareByte, int index, int notes[]) {
-   for (int count = 0; count < 8; count++) {
-     if (hardwareByte & (1 << count)) {
-       int lookupIndex = index * 8 + count;
-       addNote(noteTable[lookupIndex], notes);
-     } 
-   }
+  for (int count = 0; count < 8; count++) {
+    if (hardwareByte & (1 << count)) {
+      int lookupIndex = index * 8 + count;
+      addNote(noteTable[lookupIndex], notes);
+    }
+  }
 }
 
 void getNoteList(volatile byte hardwareData[], int notes[]) {
@@ -122,40 +184,47 @@ void getNoteList(volatile byte hardwareData[], int notes[]) {
   }
 }
 
-void loop() 
-{ 
+void loop()
+{
   char text[16];
   digitalWrite(LATCH_PIN, 1);
   digitalWrite(LATCH_PIN, 0);
 
   // Read 16 bytes off of the serial port.
-  for(int i=0; i < 16; i++)
+  int hasData = 0;
+  for (int i = 0; i < 16; i++)
   {
     // Read 8 individual bits and pack them into a single byte.
     bufferA[i] = 0;
-    for(int j=0; j < 8; j++)
+    for (int j = 0; j < 8; j++)
     {
       bufferA[i] <<= 1;
       bufferA[i] |= PINB & 0x01;
       digitalWrite(CLOCK_PIN, 0);
       digitalWrite(CLOCK_PIN, 1);
     }
-    
-    //Serial.print(bufferA[i],DEC);
-    //Serial.print(':');
+    hasData += bufferA[i] != 0;
   }
-  //Serial.print('\n');
-  
+  if (hasData) {
+    for (int i = 0; i < 16; i++)
+    {
+      Serial.print(bufferA[i], DEC);
+      Serial.print(':');
+    }
+
+    Serial.print('\n');
+  }
+
   int notes[60];
   getNoteList(bufferA, notes);
-  
+
   int count = notes[0];
   for (int i = 0; i < count; i++) {
-    Serial.print(notes[i + 1],DEC); // sends values
+    Serial.print(notes[i + 1], DEC); // sends values
     //Serial.print(notes[i],DEC); // sends values, doesnt add 1
     Serial.write(","); // same as .print(",",BYTE); it seems
   }
   if (count > 0) {
-  Serial.write("\n");  // same as .print("*",BYTE); it seems
+    Serial.write("\n");  // same as .print("*",BYTE); it seems
   }
 }
