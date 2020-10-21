@@ -132,7 +132,7 @@ void loop()
   for(int i=0; i < 16; i++)
   {
     // Read 8 individual bits and pack them into a single byte.
-    //bufferA[i] = 0;
+    bufferA[i] = 0;
     for(int j=0; j < 8; j++)
     {
       bufferA[i] <<= 1;
@@ -140,7 +140,11 @@ void loop()
       digitalWrite(CLOCK_PIN, 0);
       digitalWrite(CLOCK_PIN, 1);
     }
+    
+    //Serial.print(bufferA[i],DEC);
+    //Serial.print(':');
   }
+  //Serial.print('\n');
   
   int notes[60];
   getNoteList(bufferA, notes);
@@ -151,5 +155,7 @@ void loop()
     //Serial.print(notes[i],DEC); // sends values, doesnt add 1
     Serial.write(","); // same as .print(",",BYTE); it seems
   }
-  Serial.write("*");  // same as .print("*",BYTE); it seems
+  if (count > 0) {
+  Serial.write("\n");  // same as .print("*",BYTE); it seems
+  }
 }
