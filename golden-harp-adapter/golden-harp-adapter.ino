@@ -13,22 +13,30 @@
 #define CLOCK_PIN 3
 #define DEBUG_INPUT 0
 
-// raw mapped note values for each position on the Left and Right strips:
-#define MIN_R_STRIP 1
-#define MAX_R_STRIP 29
-#define MIN_L_STRIP 30
-#define MAX_L_STRIP 56
+
+// there are three distinct sets of "note" index values - I use the following terms to keep them from being confused:
+//   HARDWARE_BYTE:  the bytes read from the serial connection that represent the raw hardware state of the keyboard
+//   KEY_INDEX:      the index into the logic "strip" position or the musical keyboard
+//   NOTE:           the scaled MIDI "note" value
+
+// Key Indexes for the extent of the two strips and the musical keyboard:
+#define MIN_R_STRIP 1           // "blue" 
+#define MAX_R_STRIP 29          // "yellow"
+#define MIN_L_STRIP 30          // labeled 1 on the keyboard
+#define MAX_L_STRIP 56          // labeled 27 on the keyboard
+#define MIN_MUSIC_KEYBOARD 60   // the leftmost C
+#define MAX_MUSIC_KEYBOARD 97   // the rightmost C
+
 
 #define MIDI_C4 60 // MIDI note value for middle-C
 
-volatile byte bufferA[NUM_OF_BYTES * 2]; // Hopefully enough?
+boolean keyState[64]; // we've sent an ON event for this key
+boolean keyScan[64];  // this key was depressed on the current scan
 
-boolean noteState[64]; // we've sent an OFF or ON event for this note?
-boolean noteScan[64];  // this note was depressed on the current scan
 int r_scale[30]; // scaling offsets for the right strip
 int l_scale[30]; // scaling offsets for the left strip
 
-int noteTable[64] = {
+int hardwareToKeyTable[64] = {
   -1, //0
   24, //1
   25, //2
@@ -143,10 +151,10 @@ void setup()
   digitalWrite(LATCH_PIN, 0);
   digitalWrite(CLOCK_PIN, 1);
   for (int i = 0; i < 64; i++) {
-    noteState[i] = false;
+    keyState[i] = false;
   }
 
-  // default to a major scale based at middle-C (and the left strip 2 ocraves higher)
+  // default to a major scale based at middle-C (and the left strip 2 octaves higher)
   int scaleDefinition[] = { 0, 2, 4, 5, 7, 9, 11, -1 };
   scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP, scaleDefinition, MIDI_C4);
   scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4+24);
@@ -165,92 +173,90 @@ void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) 
   }
 }
 
-void addNote(int noteValue, int notes[]) {
-  notes[0] += 1;
-  int insertIndex = notes[0];
-  notes[insertIndex] = noteValue;
-
-  noteScan[noteValue] = true;
+void addKey(int key) {
+  keyScan[key] = true;
 }
 
-void convertByteToNote(byte hardwareByte, int index, int notes[]) {
+void convertHardwareByteToKey(byte hardwareByte, int index) {
   for (int count = 0; count < 8; count++) {
     if (hardwareByte & (1 << count)) {
       int lookupIndex = index * 8 + count;
-      addNote(noteTable[lookupIndex], notes);
+      addKey(hardwareToKeyTable[lookupIndex]);
     }
   }
 }
 
-void getNoteList(volatile byte hardwareData[], int notes[]) {
-  notes[0] = 0;
-  convertByteToNote(hardwareData[0], 0, notes);
+void getScannedKeys(volatile byte hardwareData[]) {
+  convertHardwareByteToKey(hardwareData[0], 0);
   for (int i = 9; i < 16; i++) {
-    convertByteToNote(hardwareData[i], i - 8, notes);
+    convertHardwareByteToKey(hardwareData[i], i - 8);
   }
 }
 
-int scaleNote(int index) {
-  if (index >= MIN_R_STRIP && index <= MAX_R_STRIP) {
-    return r_scale[index - MIN_R_STRIP];
+int scaleNote(int key) {
+  if (key >= MIN_R_STRIP && key <= MAX_R_STRIP) {
+    return r_scale[key - MIN_R_STRIP];
   } else {
-    return l_scale[index - MIN_L_STRIP];
+    return l_scale[key - MIN_L_STRIP];
   }
 }
-void noteOut(int index) {
-  if (noteScan[index] && noteState[index]) {
+
+void keyOut(int key) {
+  if (keyScan[key] && keyState[key]) {
     // already sent - key still depressed
-  } else if (noteScan[index]) {
-    noteState[index] = true;
+  } else if (keyScan[key]) {
+    // detected "key down"
+    keyState[key] = true;
     Serial.print("NOTEON ");
-    Serial.print(scaleNote(index), DEC);
+    Serial.print(scaleNote(key), DEC);
     Serial.println();
-  } else if (noteState[index]) {
-    noteState[index] = false;
+  } else if (keyState[key]) {
+    // detected "key up"
+    keyState[key] = false;
     Serial.print("NOTEOFF ");
-    Serial.print(scaleNote(index), DEC);
+    Serial.print(scaleNote(key), DEC);
     Serial.println();
   }
 }
 void loop()
 {
   for (int i = 0; i < 64; i++) {
-    noteScan[i] = false;
+    keyScan[i] = false;
   }
-
-  char text[16];
+  
   digitalWrite(LATCH_PIN, 1);
   digitalWrite(LATCH_PIN, 0);
 
-  // Read 16 bytes off of the serial port.
   int hasData = 0;
+
+  // Read 16 bytes off of the serial port.
+  volatile byte hardwareBytes[16]; 
   for (int i = 0; i < 16; i++)
   {
     // Read 8 individual bits and pack them into a single byte.
-    bufferA[i] = 0;
+    hardwareBytes[i] = 0;
     for (int j = 0; j < 8; j++)
     {
-      bufferA[i] <<= 1;
-      bufferA[i] |= PINB & 0x01;
+      hardwareBytes[i] <<= 1;
+      hardwareBytes[i] |= PINB & 0x01;
       digitalWrite(CLOCK_PIN, 0);
       digitalWrite(CLOCK_PIN, 1);
     }
-    hasData += bufferA[i] != 0;
+    hasData += hardwareBytes[i] != 0;
   }
   if (DEBUG_INPUT && hasData) {
     for (int i = 0; i < 16; i++)
     {
-      Serial.print(bufferA[i], DEC);
+      Serial.print(hardwareBytes[i], DEC);
       Serial.print(':');
     }
 
     Serial.print('\n');
   }
 
-  int notes[60];
-  getNoteList(bufferA, notes);
+  getScannedKeys(hardwareBytes);
 
   for (int i = 0; i < 64; i++) {
-    noteOut(i);
+    keyOut(i);
   }
 }
