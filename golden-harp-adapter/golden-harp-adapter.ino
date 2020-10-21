@@ -11,26 +11,22 @@
 #define NUM_OF_BYTES 128
 #define LATCH_PIN 2
 #define CLOCK_PIN 3
+#define DEBUG_INPUT 0
 
-volatile byte bitIndex, bitIndexB;
+// raw mapped note values for each position on the Left and Right strips:
+#define MIN_R_STRIP 1
+#define MAX_R_STRIP 29
+#define MIN_L_STRIP 30
+#define MAX_L_STRIP 56
+
+#define MIDI_C4 60 // MIDI note value for middle-C
+
 volatile byte bufferA[NUM_OF_BYTES * 2]; // Hopefully enough?
-volatile byte lastState, currentState;
-volatile boolean bitLatched;
-volatile byte bufferSelect;
-volatile byte switchBuffer;
-volatile byte latchDecimator;
-volatile boolean okToClock;
 
-void setup()
-{
-  Serial.begin(9600); //115200);
-  pinMode(2, OUTPUT); // latch
-  pinMode(3, OUTPUT); // clock
-  pinMode(8, INPUT); // read
-  latchDecimator = 0;
-  digitalWrite(LATCH_PIN, 0);
-  digitalWrite(CLOCK_PIN, 1);
-}
+boolean noteState[64]; // we've sent an OFF or ON event for this note?
+boolean noteScan[64];  // this note was depressed on the current scan
+int r_scale[30]; // scaling offsets for the right strip
+int l_scale[30]; // scaling offsets for the left strip
 
 int noteTable[64] = {
   -1, //0
@@ -99,72 +95,82 @@ int noteTable[64] = {
   44, //63
 };
 
-// Keyboard mapping
+// Musical Keyboard mapping
 //   C0:  0:0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:
 //   Db0: 0:0:128:0:0:0:0:0:0:0:0:0:0:0:0:0:
 //   D0:  (missing key)
 //   Eb0: 0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:0:
-//   E0:
-//   F0:
-//   Gb0:
-//   G0:
-//   Ab0:
-//   A0:
-//   Bf0:
-//   B0:
-//   C1:
-//   Db1:
-//   D1:
-//   Eb1:
-//   E1:
-//   F1:
-//   Gb1:
-//   G1:
-//   Ab1:
-//   A1:
-//   Bf1:
-//   B1:
-//   C2:
-//   Db2:
-//   D2:
-//   Eb2:
-//   E2:
-//   F2:
-//   Gb2:
-//   G2:
-//   Ab2:
-//   A2:
-//   Bf2:
-//   B2:
-//   C3:
-//   Db3:
-//   D3:
-//   Eb3:
-//   E3:
-//   F3:
-//   Gb3:
-//   G3:
-//   Ab3:
-//   A3:
-//   Bf3:
-//   B3:
-//   C4:
-//   Db4:
-//   D4:
-//   Eb4:
-//   E4:
-//   F4:
-//   Gb4:
-//   G4:
-//   Ab4:
-//   A4:
-//   Bf4:
-//   B4:
+//   E0:  (missing key)
+//   F0:  0:0:0:0:128:0:0:0:0:0:0:0:0:0:0:0:
+//   Gb0: 0:0:0:128:0:0:0:0:0:0:0:0:0:0:0:0:
+//   G0:  0:128:0:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   Ab0: 0:0:0:0:0:0:0:0:4:0:0:0:0:0:0:0:
+//   A0:  0:0:4:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   Bf0: 0:0:0:0:0:0:4:0:0:0:0:0:0:0:0:0:
+//   B0:  0:0:0:0:0:0:0:4:0:0:0:0:0:0:0:0:
+//   C1:  (missing key)
+//   Db1: (missing key)
+//   D1:  0:0:0:4:0:0:0:0:0:0:0:0:0:0:0:0:
+//   Eb1: 0:4:0:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   E1:  (missing key)
+//   F1:  0:0:8:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   Gb1: 0:0:0:0:0:0:8:0:0:0:0:0:0:0:0:0:
+//   G1:  0:0:0:0:0:0:0:8:0:0:0:0:0:0:0:0:
+//   Ab1: 0:0:0:0:0:8:0:0:0:0:0:0:0:0:0:0:
+//   A1:  0:0:0:0:8:0:0:0:0:0:0:0:0:0:0:0:
+//   Bf1: 0:0:0:8:0:0:0:0:0:0:0:0:0:0:0:0:
+//   B1:  (missing key)
+//   C2:  0:0:0:0:0:0:0:0:2:0:0:0:0:0:0:0:
+//   Db2: 0:0:2:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   D2:  0:0:0:0:0:0:2:0:0:0:0:0:0:0:0:0:
+//   Eb2: 0:0:0:0:0:0:0:2:0:0:0:0:0:0:0:0:
+//   E2:  (missing key)
+//   F2:  0:0:0:0:2:0:0:0:0:0:0:0:0:0:0:0:
+//   Gb2: 0:0:0:2:0:0:0:0:0:0:0:0:0:0:0:0:
+//   G2:  0:2:0:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   Ab2: 0:0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:
+//   A2:  0:0:16:0:0:0:0:0:0:0:0:0:0:0:0:0:
+//   Bf2: 0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:
+//   B2:  0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:
+//   C3:  0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:0:
+
+void setup()
+{
+  Serial.begin(9600); //115200);
+  pinMode(2, OUTPUT); // latch
+  pinMode(3, OUTPUT); // clock
+  pinMode(8, INPUT); // read
+  digitalWrite(LATCH_PIN, 0);
+  digitalWrite(CLOCK_PIN, 1);
+  for (int i = 0; i < 64; i++) {
+    noteState[i] = false;
+  }
+
+  // default to a major scale based at middle-C (and the left strip 2 ocraves higher)
+  int scaleDefinition[] = { 0, 2, 4, 5, 7, 9, 11, -1 };
+  scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP, scaleDefinition, MIDI_C4);
+  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4+24);
+}
+
+void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) {
+  int j = 0;
+  for (int i = 0; i < MAX_R_STRIP - MIN_R_STRIP; i++) {
+    if (scaleDefinition[j] < 0) {
+      // next octave
+      j = 0;
+      baseNote += 12;
+    }
+    scale[i] = baseNote + scaleDefinition[j];
+    j++;
+  }
+}
 
 void addNote(int noteValue, int notes[]) {
   notes[0] += 1;
   int insertIndex = notes[0];
   notes[insertIndex] = noteValue;
+
+  noteScan[noteValue] = true;
 }
 
 void convertByteToNote(byte hardwareByte, int index, int notes[]) {
@@ -184,8 +190,34 @@ void getNoteList(volatile byte hardwareData[], int notes[]) {
   }
 }
 
+int scaleNote(int index) {
+  if (index >= MIN_R_STRIP && index <= MAX_R_STRIP) {
+    return r_scale[index - MIN_R_STRIP];
+  } else {
+    return l_scale[index - MIN_L_STRIP];
+  }
+}
+void noteOut(int index) {
+  if (noteScan[index] && noteState[index]) {
+    // already sent - key still depressed
+  } else if (noteScan[index]) {
+    noteState[index] = true;
+    Serial.print("NOTEON ");
+    Serial.print(scaleNote(index), DEC);
+    Serial.println();
+  } else if (noteState[index]) {
+    noteState[index] = false;
+    Serial.print("NOTEOFF ");
+    Serial.print(scaleNote(index), DEC);
+    Serial.println();
+  }
+}
 void loop()
 {
+  for (int i = 0; i < 64; i++) {
+    noteScan[i] = false;
+  }
+
   char text[16];
   digitalWrite(LATCH_PIN, 1);
   digitalWrite(LATCH_PIN, 0);
@@ -205,7 +237,7 @@ void loop()
     }
     hasData += bufferA[i] != 0;
   }
-  if (hasData) {
+  if (DEBUG_INPUT && hasData) {
     for (int i = 0; i < 16; i++)
     {
       Serial.print(bufferA[i], DEC);
@@ -218,13 +250,7 @@ void loop()
   int notes[60];
   getNoteList(bufferA, notes);
 
-  int count = notes[0];
-  for (int i = 0; i < count; i++) {
-    Serial.print(notes[i + 1], DEC); // sends values
-    //Serial.print(notes[i],DEC); // sends values, doesnt add 1
-    Serial.write(","); // same as .print(",",BYTE); it seems
-  }
-  if (count > 0) {
-    Serial.write("\n");  // same as .print("*",BYTE); it seems
+  for (int i = 0; i < 64; i++) {
+    noteOut(i);
   }
 }
