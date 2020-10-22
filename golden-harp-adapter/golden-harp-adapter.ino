@@ -10,6 +10,7 @@
 
 #define LATCH_PIN 2
 #define CLOCK_PIN 3
+
 #define DEBUG_INPUT 0
 
 
@@ -24,127 +25,239 @@
 #define MIN_L_STRIP 30          // labeled 1 on the keyboard
 #define MAX_L_STRIP 56          // labeled 27 on the keyboard
 #define MIN_MUSIC_KEYBOARD 60   // the leftmost C
-#define MAX_MUSIC_KEYBOARD 97   // the rightmost C
+#define MAX_MUSIC_KEYBOARD 96   // the rightmost C
 
 
 #define MIDI_C4 60 // MIDI note value for middle-C
 
-boolean keyState[64]; // we've sent an ON event for this key
-boolean keyScan[64];  // this key was depressed on the current scan
+boolean keyState[128]; // we've sent an ON event for this key
+boolean keyScan[128];  // this key was depressed on the current scan
 
-int r_scale[30]; // scaling offsets for the right strip
-int l_scale[30]; // scaling offsets for the left strip
+int r_scale[MAX_R_STRIP - MIN_R_STRIP + 1]; // scaling offsets for the right strip
+int l_scale[MAX_L_STRIP - MIN_L_STRIP + 1]; // scaling offsets for the left strip
 
-int hardwareToKeyTable[64] = {
-  -1, //0
-  24, //1
-  25, //2
-  14, //3
-  23, //4
-  3, //5
-  4, //6
-  13, //7
-  -1, //8
-  22, //9
-  27, //10
-  12, //11
-  21, //12
-  5, //13
-  6, //14
-  11, //15
-  -1, //16
-  51, //17
-  55, //18
-  41, //19
-  50, //20
-  34, //21
-  35, //22
-  40, //23
-  -1, //24
-  53, //25
-  54, //26
-  39, //27
-  52, //28
-  36, //29
-  37, //30
-  38, //31
-  -1, //32
-  18, //33
-  29, //34
-  16, //35
-  17, //36
-  30, //37
-  31, //38
-  15, //39
-  -1, //40
-  49, //41
-  56, //42
-  43, //43
-  48, //44
-  32, //45
-  33, //46
-  42, //47
-  -1, //48
-  20, //49
-  28, //50
-  10, //51
-  19, //52
-  7, //53
-  8, //54
-  9, //55
-  -1, //56
-  47, //57
-  26, //58
-  45, //59
-  46, //60
-  1, //61
-  2, //62
-  44, //63
+typedef struct {
+  int baseNote;
+  int scale;
+  int midiChannel;
+} stripPreset;
+
+typedef struct {
+  stripPreset l_preset;
+  stripPreset r_preset;
+
+  int r_baseNote;
+  int l_scale;
+  int r_midi_channel;
+} preset;
+
+typedef struct {
+  int n_scales;
+  int n_presets;
+  preset presets[37];
+  int scaleDefs; // first scaledef - the rest are scanned linearly using -1 to separate each scale definition
+} config;
+
+
+int hardwareToKeyTable[128] = {
+  ///      [byte-index, bit]
+
+  -1, //  0 [0, 0] // keystrips
+  24, //  1 [0, 1] //...
+  25, //  2 [0, 2]
+  14, //  3 [0, 3]
+  23, //  4 [0, 4]
+  3,  //  5 [0, 5]
+  4,  //  6 [0, 6]
+  13, //  7 [0, 7]
+
+  -1, //  8 [1, 0] // musical keyboard
+  91, //  9 [1, 1] //...
+  75, // 10 [1, 2]
+  83, // 11 [1, 3]
+  -1, // 12 [1, 4]
+  -1, // 13 [1, 5]
+  -1, // 14 [1, 6]
+  67, // 15 [1, 7]
+
+  -1, // 16 [2, 0] // musical keyboard
+  85, // 17 [2, 1] //...
+  69, // 18 [2, 2]
+  77, // 19 [2, 3]
+  93, // 20 [2, 4]
+  -1, // 21 [2, 5]
+  -1, // 22 [2, 6]
+  61, // 23 [2, 7]
+
+  -1, // 24 [3, 0] // musical keyboard
+  90, // 25 [3, 1] //...
+  74, // 26 [3, 2]
+  82, // 27 [3, 3]
+  -1, // 28 [3, 4]
+  -1, // 29 [3, 5]
+  -1, // 30 [3, 6]
+  66, // 31 [3, 7]
+
+  -1, // 32 [4, 0] // musical keyboard
+  89, // 33 [4, 1] //...
+  73, // 34 [4, 2]
+  81, // 35 [4, 3]
+  -1, // 36 [4, 4]
+  -1, // 37 [4, 5]
+  -1, // 38 [4, 6]
+  65, // 39 [4, 7]
+
+  -1, // 40 [5, 0] // musical keyboard
+  88, // 41 [5, 1] //...
+  72, // 42 [5, 2]
+  80, // 43 [5, 3]
+  96, // 44 [5, 4]
+  -1, // 45 [5, 5]
+  -1, // 46 [5, 6]
+  64, // 47 [5, 7]
+
+  -1, // 48 [6, 0] // musical keyboard
+  86, // 49 [6, 1] //...
+  70, // 50 [6, 2]
+  78, // 51 [6, 3]
+  94, // 52 [6, 4]
+  -1, // 53 [6, 5]
+  -1, // 54 [6, 6]
+  62, // 55 [6, 7]
+
+  -1, // 56 [7, 0] // musical keyboard
+  87, // 57 [7, 1] //...
+  71, // 58 [7, 2]
+  79, // 59 [7, 3]
+  95, // 60 [7, 4]
+  -1, // 61 [7, 5]
+  -1, // 62 [7, 6]
+  63, // 63 [7, 7]
+
+  -1, // 64 [8, 0] // musical keyboard
+  84, // 65 [8, 1] //...
+  68, // 66 [8, 2]
+  76, // 67 [8, 3]
+  92, // 68 [8, 4]
+  -1, // 69 [8, 5]
+  -1, // 70 [8, 6]
+  60, // 71 [8, 7]
+
+  -1, // 72 [9, 0] // keystrips
+  22, // 73 [9, 1] //..
+  27, // 74 [9, 2]
+  12, // 75 [9, 3]
+  21, // 76 [9, 4]
+  5,  // 77 [9, 5]
+  6,  // 78 [9, 6]
+  11, // 79 [9, 7]
+
+  -1, // 80 [10, 0] // keystrips
+  51, // 81 [10, 1] //..
+  55, // 82 [10, 2]
+  41, // 83 [10, 3]
+  50, // 84 [10, 4]
+  34, // 85 [10, 5]
+  35, // 86 [10, 6]
+  40, // 87 [10, 7]
+
+  -1, // 88 [11, 0] // keystrips
+  53, // 89 [11, 1] //..
+  54, // 90 [11, 2]
+  39, // 91 [11, 3]
+  52, // 92 [11, 4]
+  36, // 93 [11, 5]
+  37, // 94 [11, 6]
+  38, // 95 [11, 7]
+
+  -1, // 96 [12, 0] // keystrips
+  18, // 97 [12, 1] //..
+  29, // 98 [12, 2]
+  16, // 99 [12, 3]
+  17, // 100 [12, 4]
+  30, // 101 [12, 5]
+  31, // 102 [12, 6]
+  15, // 103 [12, 7]
+
+  -1, // 104 [13, 0] // keystrips
+  49, // 105 [13, 1] //..
+  56, // 106 [13, 2]
+  43, // 107 [13, 3]
+  48, // 108 [13, 4]
+  32, // 109 [13, 5]
+  33, // 110 [13, 6]
+  42, // 111 [13, 7]
+
+  -1, // 112 [14, 0] // keystrips
+  20, // 113 [14, 1] //..
+  28, // 114 [14, 2]
+  10, // 115 [14, 3]
+  19, // 116 [14, 4]
+  7,  // 117 [14, 5]
+  8,  // 118 [14, 6]
+  9,  // 119 [14, 7]
+
+  -1, // 120 [15, 0] // keystrips
+  47, // 121 [15, 1] //..
+  26, // 122 [15, 2]
+  45, // 123 [15, 3]
+  46, // 124 [15, 4]
+  1,  // 125 [15, 5]
+  2,  // 126 [15, 6]
+  44, // 127  [15, 7]
 };
 
+// Strips mapping - selected values to sanity check the original strip-only mapping table
+//  30: LMIN:  0:0:0:0:0:0:0:0:0:0:0:0:32:0:0:0:  [12 - 32] -> 32+bits -> 32+5 = 37 (sparse variant) new variant: 101
+//  56: LMAX: 0:0:0:0:0:0:0:0:0:0:0:0:0:4:0:0:    [13 - 4]  -> 40+bits -> 40+2 = 42
+//  1:  RMIN: 0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:32:   [15 - 32] -> 56+bits -> 56+5 = 61
+//  28: RMAX-1: 0:0:0:0:0:0:0:0:0:0:0:0:0:0:4:0:  [14 - 4]  -> 48+bits -> 48+2 = 50
+//  29: RMAX:  0:0:0:0:0:0:0:0:0:0:0:0:4:0:0:0:   [12 - 4]  -> 32+bits -> 32+2 = 34
+
 // Musical Keyboard mapping
+// my test hardware has some missing keys - I am guessing values based on the patterns I see in the non-missing ones:
 //                                            [index - value]
-//   C0:  0:0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:  [8 - 128]
-//   Db0: 0:0:128:0:0:0:0:0:0:0:0:0:0:0:0:0:  [2 - 128]
-//   D0:  (missing key)                       [6 - 128]  : GUESS
-//   Eb0: 0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:0:  [7 - 128]
-//   E0:  (missing key)                       [5 - 128]  : GUESS
-//   F0:  0:0:0:0:128:0:0:0:0:0:0:0:0:0:0:0:  [4 - 128]
-//   Gb0: 0:0:0:128:0:0:0:0:0:0:0:0:0:0:0:0:  [3 - 128]
-//   G0:  0:128:0:0:0:0:0:0:0:0:0:0:0:0:0:0:  [1 - 128]
+//   60: C0:  0:0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:  [8 - 128] 8*8+7 =>
+//   61: Db0: 0:0:128:0:0:0:0:0:0:0:0:0:0:0:0:0:  [2 - 128]
+//   62: D0:  (missing key)                       [6 - 128]  : GUESS
+//   63: Eb0: 0:0:0:0:0:0:0:128:0:0:0:0:0:0:0:0:  [7 - 128]
+//   64: E0:  (missing key)                       [5 - 128]  : GUESS
+//   65: F0:  0:0:0:0:128:0:0:0:0:0:0:0:0:0:0:0:  [4 - 128]
+//   66: Gb0: 0:0:0:128:0:0:0:0:0:0:0:0:0:0:0:0:  [3 - 128]
+//   67: G0:  0:128:0:0:0:0:0:0:0:0:0:0:0:0:0:0:  [1 - 128]
 
-//   Ab0: 0:0:0:0:0:0:0:0:4:0:0:0:0:0:0:0:    [8 - 4]
-//   A0:  0:0:4:0:0:0:0:0:0:0:0:0:0:0:0:0:    [2 - 4]
-//   Bf0: 0:0:0:0:0:0:4:0:0:0:0:0:0:0:0:0:    [6 - 4]
-//   B0:  0:0:0:0:0:0:0:4:0:0:0:0:0:0:0:0:    [7 - 4]
-//   C1:  (missing key)                       [5 - 4]  : GUESS
-//   Db1: (missing key)                       [4 - 4]  : GUESS
-//   D1:  0:0:0:4:0:0:0:0:0:0:0:0:0:0:0:0:    [3 - 4]
-//   Eb1: 0:4:0:0:0:0:0:0:0:0:0:0:0:0:0:0:    [1 - 4]
+//   68: Ab0: 0:0:0:0:0:0:0:0:4:0:0:0:0:0:0:0:    [8 - 4] 8*8+2
+//   69: A0:  0:0:4:0:0:0:0:0:0:0:0:0:0:0:0:0:    [2 - 4]
+//   70: Bf0: 0:0:0:0:0:0:4:0:0:0:0:0:0:0:0:0:    [6 - 4]
+//   71: B0:  0:0:0:0:0:0:0:4:0:0:0:0:0:0:0:0:    [7 - 4]
+//   72: C1:  (missing key)                       [5 - 4]  : GUESS
+//   73: Db1: (missing key)                       [4 - 4]  : GUESS
+//   74: D1:  0:0:0:4:0:0:0:0:0:0:0:0:0:0:0:0:    [3 - 4]
+//   75: Eb1: 0:4:0:0:0:0:0:0:0:0:0:0:0:0:0:0:    [1 - 4]
 
-//   E1:  (missing key)                       [8 - 8]  : GUESS
-//   F1:  0:0:8:0:0:0:0:0:0:0:0:0:0:0:0:0:    [2 - 8]
-//   Gb1: 0:0:0:0:0:0:8:0:0:0:0:0:0:0:0:0:    [6 - 8]
-//   G1:  0:0:0:0:0:0:0:8:0:0:0:0:0:0:0:0:    [7 - 8]
-//   Ab1: 0:0:0:0:0:8:0:0:0:0:0:0:0:0:0:0:    [5 - 8]
-//   A1:  0:0:0:0:8:0:0:0:0:0:0:0:0:0:0:0:    [4 - 8] 
-//   Bf1: 0:0:0:8:0:0:0:0:0:0:0:0:0:0:0:0:    [3 - 8]
-//   B1:  (missing key)                       [1 - 8]  : GUESS
+//   76: E1:  (missing key)                       [8 - 8]  : GUESS 8*8+3
+//   77: F1:  0:0:8:0:0:0:0:0:0:0:0:0:0:0:0:0:    [2 - 8]
+//   78: Gb1: 0:0:0:0:0:0:8:0:0:0:0:0:0:0:0:0:    [6 - 8]
+//   79: G1:  0:0:0:0:0:0:0:8:0:0:0:0:0:0:0:0:    [7 - 8]
+//   80: Ab1: 0:0:0:0:0:8:0:0:0:0:0:0:0:0:0:0:    [5 - 8]
+//   81: A1:  0:0:0:0:8:0:0:0:0:0:0:0:0:0:0:0:    [4 - 8]
+//   82: Bf1: 0:0:0:8:0:0:0:0:0:0:0:0:0:0:0:0:    [3 - 8]
+//   83: B1:  (missing key)                       [1 - 8]  : GUESS
 
-//   C2:  0:0:0:0:0:0:0:0:2:0:0:0:0:0:0:0:    [8 - 2] 
-//   Db2: 0:0:2:0:0:0:0:0:0:0:0:0:0:0:0:0:    [2 - 2]
-//   D2:  0:0:0:0:0:0:2:0:0:0:0:0:0:0:0:0:    [6 - 2]
-//   Eb2: 0:0:0:0:0:0:0:2:0:0:0:0:0:0:0:0:    [7 - 2]
-//   E2:  (missing key)                       [5 - 2]  : GUESS
-//   F2:  0:0:0:0:2:0:0:0:0:0:0:0:0:0:0:0:    [4 - 2]
-//   Gb2: 0:0:0:2:0:0:0:0:0:0:0:0:0:0:0:0:    [3 - 2]
-//   G2:  0:2:0:0:0:0:0:0:0:0:0:0:0:0:0:0:    [1 - 2]
+//   84: C2:  0:0:0:0:0:0:0:0:2:0:0:0:0:0:0:0:    [8 - 2] 8*8+1
+//   85: Db2: 0:0:2:0:0:0:0:0:0:0:0:0:0:0:0:0:    [2 - 2]
+//   86: D2:  0:0:0:0:0:0:2:0:0:0:0:0:0:0:0:0:    [6 - 2]
+//   87: Eb2: 0:0:0:0:0:0:0:2:0:0:0:0:0:0:0:0:    [7 - 2]
+//   88: E2:  (missing key)                       [5 - 2]  : GUESS
+//   89: F2:  0:0:0:0:2:0:0:0:0:0:0:0:0:0:0:0:    [4 - 2]
+//   90: Gb2: 0:0:0:2:0:0:0:0:0:0:0:0:0:0:0:0:    [3 - 2]
+//   91: G2:  0:2:0:0:0:0:0:0:0:0:0:0:0:0:0:0:    [1 - 2]
 
-//   Ab2: 0:0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:   [8 - 16]
-//   A2:  0:0:16:0:0:0:0:0:0:0:0:0:0:0:0:0:   [2 - 16]
-//   Bf2: 0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:   [6 - 16]
-//   B2:  0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:   [7 - 16]
-//   C3:  0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:0:   [5 - 16]
+//   92: Ab2: 0:0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:   [8 - 16] 8*8+4
+//   93: A2:  0:0:16:0:0:0:0:0:0:0:0:0:0:0:0:0:   [2 - 16]
+//   94: Bf2: 0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:   [6 - 16]
+//   95: B2:  0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:   [7 - 16]
+//   96: C3:  0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:0:   [5 - 16]
 
 void setup()
 {
@@ -161,7 +274,7 @@ void setup()
   // default to a major scale based at middle-C (and the left strip 2 octaves higher)
   int scaleDefinition[] = { 0, 2, 4, 5, 7, 9, 11, -1 };
   scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP, scaleDefinition, MIDI_C4);
-  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4+24);
+  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4 + 24);
 }
 
 void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) {
@@ -178,10 +291,13 @@ void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) 
 }
 
 void addKey(int key) {
+  //Serial.print("saw ");Serial.print(key,DEC);Serial.println();
   keyScan[key] = true;
 }
 
-void convertHardwareByteToKey(byte hardwareByte, int index) {
+void convertHardwareByteToStripKey(byte hardwareByte, int index) {
+  // for each non-zero but in the hardware byte add "key" value indexed by
+  //     index * 8 + bit
   for (int count = 0; count < 8; count++) {
     if (hardwareByte & (1 << count)) {
       int lookupIndex = index * 8 + count;
@@ -191,9 +307,10 @@ void convertHardwareByteToKey(byte hardwareByte, int index) {
 }
 
 void getScannedKeys(volatile byte hardwareData[]) {
-  convertHardwareByteToKey(hardwareData[0], 0);
-  for (int i = 9; i < 16; i++) {
-    convertHardwareByteToKey(hardwareData[i], i - 8);
+  // "strip" values are in the 0, 9..16 indexes:
+  // "musical keyboard" values are in the 1..8 indexes
+  for (int i = 0; i < 16; i++) {
+    convertHardwareByteToStripKey(hardwareData[i], i);
   }
 }
 
@@ -211,15 +328,25 @@ void keyOut(int key) {
   } else if (keyScan[key]) {
     // detected "key down"
     keyState[key] = true;
-    Serial.print("NOTEON ");
-    Serial.print(scaleNote(key), DEC);
-    Serial.println();
+    if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
+      Serial.print("PRESET ");
+      Serial.print(key - MIN_MUSIC_KEYBOARD, DEC);
+      Serial.println();
+    } else {
+      Serial.print("NOTEON ");
+      Serial.print(scaleNote(key), DEC);
+      Serial.println();
+    }
   } else if (keyState[key]) {
     // detected "key up"
     keyState[key] = false;
-    Serial.print("NOTEOFF ");
-    Serial.print(scaleNote(key), DEC);
-    Serial.println();
+    if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
+      // nop
+    } else {
+      Serial.print("NOTEOFF ");
+      Serial.print(scaleNote(key), DEC);
+      Serial.println();
+    }
   }
 }
 
@@ -228,14 +355,14 @@ void loop()
   for (int i = 0; i < 64; i++) {
     keyScan[i] = false;
   }
-  
+
   digitalWrite(LATCH_PIN, 1);
   digitalWrite(LATCH_PIN, 0);
 
   int hasData = 0;
 
   // Read 16 bytes off of the serial port.
-  volatile byte hardwareBytes[16]; 
+  volatile byte hardwareBytes[16];
   for (int i = 0; i < 16; i++)
   {
     // Read 8 individual bits and pack them into a single byte.
@@ -261,7 +388,7 @@ void loop()
 
   getScannedKeys(hardwareBytes);
 
-  for (int i = 0; i < 64; i++) {
+  for (int i = 0; i < 128; i++) {
     keyOut(i);
   }
 }
