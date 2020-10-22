@@ -5,11 +5,33 @@
 // 4 = 5V
 // 5 = D2
 
+// pins for the MIDI OUT connection
+// 2 = D11 (via 220ohm resistor)
+// 3 = GND
+// 4 = 5V (via 220ohm resistor)
+
+// We assume a simple Arduino (e.g. Uno) with only a single UART TX/RX pair.   We use that connection for the USB connection
+// to the host computer.   We use software serial for both MIDI and the keyboard controller connnection.
+
+// For the serial connection to MIDI:
+#include <SoftwareSerial.h>
+
+// For the serial connection to the keyboard controller:
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#define LATCH_PIN 2
-#define CLOCK_PIN 3
+#define MIDI_BAUD 31250
+#define USB_BAUD  19200
+
+#define MIDI_TX_PIN 11
+#define MIDI_RD_PIN 10
+
+#define KBD_LATCH_PIN 2
+#define KBD_CLOCK_PIN 3
+#define KBD_READ_PIN 8
+#define KBD_READ_PIN_REGISTER PINB
+
+#define NUM_KEYS 128
 
 #define DEBUG_INPUT 0
 
@@ -29,10 +51,13 @@
 
 
 #define MIDI_C4 60 // MIDI note value for middle-C
+#define MIDI_VELOCITY 64
 
-boolean keyState[128]; // we've sent an ON event for this key
-boolean keyScan[128];  // this key was depressed on the current scan
+boolean keyState[NUM_KEYS]; // we've sent an ON event for this key
+boolean keyScan[NUM_KEYS];  // this key was depressed on the current scan
 
+int r_channel; // MIDI channel for right strip
+int l_channel; // MIDI channel for right strip
 int r_scale[MAX_R_STRIP - MIN_R_STRIP + 1]; // scaling offsets for the right strip
 int l_scale[MAX_L_STRIP - MIN_L_STRIP + 1]; // scaling offsets for the left strip
 
@@ -59,7 +84,7 @@ typedef struct {
 } config;
 
 
-int hardwareToKeyTable[128] = {
+int hardwareToKeyTable[NUM_KEYS] = {
   ///      [byte-index, bit]
 
   -1, //  0 [0, 0] // keystrips
@@ -259,15 +284,22 @@ int hardwareToKeyTable[128] = {
 //   95: B2:  0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:   [7 - 16]
 //   96: C3:  0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:0:   [5 - 16]
 
+SoftwareSerial midiSerialOut(MIDI_RD_PIN, MIDI_TX_PIN);
+
 void setup()
 {
-  Serial.begin(9600); //115200);
-  pinMode(2, OUTPUT); // latch
-  pinMode(3, OUTPUT); // clock
-  pinMode(8, INPUT); // read
-  digitalWrite(LATCH_PIN, 0);
-  digitalWrite(CLOCK_PIN, 1);
-  for (int i = 0; i < 64; i++) {
+  pinMode(MIDI_TX_PIN, OUTPUT);
+  pinMode(MIDI_RD_PIN, INPUT);  // unused - but required for library initialization
+  midiSerialOut.begin(MIDI_BAUD);
+
+  Serial.begin(USB_BAUD);
+  pinMode(KBD_LATCH_PIN, OUTPUT);
+  pinMode(KBD_CLOCK_PIN, OUTPUT);
+  pinMode(KBD_READ_PIN, INPUT);
+
+  digitalWrite(KBD_LATCH_PIN, 0);
+  digitalWrite(KBD_CLOCK_PIN, 1);
+  for (int i = 0; i < NUM_KEYS; i++) {
     keyState[i] = false;
   }
 
@@ -275,6 +307,8 @@ void setup()
   int scaleDefinition[] = { 0, 2, 4, 5, 7, 9, 11, -1 };
   scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP, scaleDefinition, MIDI_C4);
   scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4 + 24);
+  r_channel = 0; // "ALL"
+  l_channel = 0; // "ALL"
 }
 
 void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) {
@@ -298,10 +332,13 @@ void addKey(int key) {
 void convertHardwareByteToStripKey(byte hardwareByte, int index) {
   // for each non-zero but in the hardware byte add "key" value indexed by
   //     index * 8 + bit
-  for (int count = 0; count < 8; count++) {
-    if (hardwareByte & (1 << count)) {
-      int lookupIndex = index * 8 + count;
-      addKey(hardwareToKeyTable[lookupIndex]);
+  if (hardwareByte != 0) {
+    // optimization: most bytes are zero - so avoid the inner loop most of the time
+    for (int count = 0; count < 8; count++) {
+      if (hardwareByte & (1 << count)) {
+        int lookupIndex = index * 8 + count;
+        addKey(hardwareToKeyTable[lookupIndex]);
+      }
     }
   }
 }
@@ -322,9 +359,50 @@ int scaleNote(int key) {
   }
 }
 
+int keyToChannel(int key) {
+  if (key >= MIN_R_STRIP && key <= MAX_R_STRIP) {
+    return r_channel;
+  } else {
+    return l_channel;
+  }
+}
+
+void midiNoteOn(int note, int channel) {
+  int opcode = 0x90 | channel;
+  midiSerialOut.write(opcode);
+  midiSerialOut.write(note);
+  midiSerialOut.write(MIDI_VELOCITY);
+
+  Serial.print(" MIDI: ");
+  Serial.print(opcode, HEX);
+  Serial.print(" ");
+  Serial.print(note, HEX);
+  Serial.print(" ");
+  Serial.print(MIDI_VELOCITY, HEX);
+  Serial.println();
+}
+
+void midiNoteOff(int note, int channel) {
+  int opcode = 0x80 | channel;
+  midiSerialOut.write(opcode);
+  midiSerialOut.write(note);
+  midiSerialOut.write((int)0); 
+
+  Serial.print(" MIDI: ");
+  Serial.print(opcode, HEX);
+  Serial.print(" ");
+  Serial.print(note, HEX);
+  Serial.print(" ");
+  Serial.print(0, HEX);
+  Serial.println();
+}
+
 void keyOut(int key) {
   if (keyScan[key] && keyState[key]) {
     // already sent - key still depressed
+    //      Serial.print("   still down ");
+    //      Serial.print(key, DEC);
+    //      Serial.println();
   } else if (keyScan[key]) {
     // detected "key down"
     keyState[key] = true;
@@ -333,16 +411,21 @@ void keyOut(int key) {
       Serial.print(key - MIN_MUSIC_KEYBOARD, DEC);
       Serial.println();
     } else {
+      midiNoteOn(scaleNote(key), keyToChannel(key));
       Serial.print("NOTEON ");
       Serial.print(scaleNote(key), DEC);
       Serial.println();
     }
   } else if (keyState[key]) {
-    // detected "key up"
+    // no longer "down" - so detected "key up"
     keyState[key] = false;
     if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
       // nop
+      Serial.print("PRESET UP ");
+      Serial.print(key - MIN_MUSIC_KEYBOARD, DEC);
+      Serial.println();
     } else {
+      midiNoteOff(scaleNote(key), keyToChannel(key));
       Serial.print("NOTEOFF ");
       Serial.print(scaleNote(key), DEC);
       Serial.println();
@@ -352,12 +435,12 @@ void keyOut(int key) {
 
 void loop()
 {
-  for (int i = 0; i < 64; i++) {
+  for (int i = 0; i < NUM_KEYS; i++) {
     keyScan[i] = false;
   }
 
-  digitalWrite(LATCH_PIN, 1);
-  digitalWrite(LATCH_PIN, 0);
+  digitalWrite(KBD_LATCH_PIN, 1);
+  digitalWrite(KBD_LATCH_PIN, 0);
 
   int hasData = 0;
 
@@ -370,9 +453,9 @@ void loop()
     for (int j = 0; j < 8; j++)
     {
       hardwareBytes[i] <<= 1;
-      hardwareBytes[i] |= PINB & 0x01;
-      digitalWrite(CLOCK_PIN, 0);
-      digitalWrite(CLOCK_PIN, 1);
+      hardwareBytes[i] |= KBD_READ_PIN_REGISTER & 0x01;
+      digitalWrite(KBD_CLOCK_PIN, 0);
+      digitalWrite(KBD_CLOCK_PIN, 1);
     }
     hasData += hardwareBytes[i] != 0;
   }
@@ -388,7 +471,7 @@ void loop()
 
   getScannedKeys(hardwareBytes);
 
-  for (int i = 0; i < 128; i++) {
+  for (int i = 0; i < NUM_KEYS; i++) {
     keyOut(i);
   }
 }
