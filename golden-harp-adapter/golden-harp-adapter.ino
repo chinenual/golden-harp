@@ -5,8 +5,8 @@
 // 4 = 5V
 // 5 = D2
 
-// pins for the MIDI OUT connection
-// 2 = D11 (via 220ohm resistor)
+// pins for the MIDI OUT connection, again, left to right, back view, tab on bottom
+// 2 = D11
 // 3 = GND
 // 4 = 5V (via 220ohm resistor)
 
@@ -16,15 +16,19 @@
 // For the serial connection to MIDI:
 #include <SoftwareSerial.h>
 
+#define ENABLE_INPUT 1 /* to isolate the MIDI I/O from the controller I/O for debugging */
+
+#if ENABLE_INPUT
 // For the serial connection to the keyboard controller:
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#endif
 
 #define MIDI_BAUD 31250
 #define USB_BAUD  19200
 
 #define MIDI_TX_PIN 11
-#define MIDI_RD_PIN 10
+#define MIDI_RX_PIN 10
 
 #define KBD_LATCH_PIN 2
 #define KBD_CLOCK_PIN 3
@@ -85,7 +89,7 @@ typedef struct {
 
 
 int hardwareToKeyTable[NUM_KEYS] = {
-  ///      [byte-index, bit]
+  /// // key [byte-index, bit]
 
   -1, //  0 [0, 0] // keystrips
   24, //  1 [0, 1] //...
@@ -284,21 +288,25 @@ int hardwareToKeyTable[NUM_KEYS] = {
 //   95: B2:  0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:   [7 - 16]
 //   96: C3:  0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:0:   [5 - 16]
 
-SoftwareSerial midiSerialOut(MIDI_RD_PIN, MIDI_TX_PIN);
+SoftwareSerial midiSerialOut(MIDI_RX_PIN, MIDI_TX_PIN);
 
 void setup()
 {
   pinMode(MIDI_TX_PIN, OUTPUT);
-  pinMode(MIDI_RD_PIN, INPUT);  // unused - but required for library initialization
+  pinMode(MIDI_RX_PIN, INPUT);  // unused - but required for library initialization
   midiSerialOut.begin(MIDI_BAUD);
 
   Serial.begin(USB_BAUD);
+
+#if ENABLE_INPUT
   pinMode(KBD_LATCH_PIN, OUTPUT);
   pinMode(KBD_CLOCK_PIN, OUTPUT);
   pinMode(KBD_READ_PIN, INPUT);
 
   digitalWrite(KBD_LATCH_PIN, 0);
   digitalWrite(KBD_CLOCK_PIN, 1);
+#endif
+
   for (int i = 0; i < NUM_KEYS; i++) {
     keyState[i] = false;
   }
@@ -373,7 +381,7 @@ void midiNoteOn(int note, int channel) {
   midiSerialOut.write(note);
   midiSerialOut.write(MIDI_VELOCITY);
 
-  Serial.print(" MIDI: ");
+  Serial.print(" MIDI note on: ");
   Serial.print(opcode, HEX);
   Serial.print(" ");
   Serial.print(note, HEX);
@@ -386,9 +394,9 @@ void midiNoteOff(int note, int channel) {
   int opcode = 0x80 | channel;
   midiSerialOut.write(opcode);
   midiSerialOut.write(note);
-  midiSerialOut.write((int)0); 
+  midiSerialOut.write((int)0);
 
-  Serial.print(" MIDI: ");
+  Serial.print(" MIDI note off: ");
   Serial.print(opcode, HEX);
   Serial.print(" ");
   Serial.print(note, HEX);
@@ -397,44 +405,37 @@ void midiNoteOff(int note, int channel) {
   Serial.println();
 }
 
+void usePreset(int num) {
+      Serial.print("PRESET ");
+      Serial.print(num, DEC);
+      Serial.println();
+}
+
 void keyOut(int key) {
   if (keyScan[key] && keyState[key]) {
     // already sent - key still depressed
-    //      Serial.print("   still down ");
-    //      Serial.print(key, DEC);
-    //      Serial.println();
   } else if (keyScan[key]) {
     // detected "key down"
     keyState[key] = true;
     if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
-      Serial.print("PRESET ");
-      Serial.print(key - MIN_MUSIC_KEYBOARD, DEC);
-      Serial.println();
+      usePreset(key - MIN_MUSIC_KEYBOARD);
     } else {
       midiNoteOn(scaleNote(key), keyToChannel(key));
-      Serial.print("NOTEON ");
-      Serial.print(scaleNote(key), DEC);
-      Serial.println();
     }
   } else if (keyState[key]) {
     // no longer "down" - so detected "key up"
     keyState[key] = false;
     if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
       // nop
-      Serial.print("PRESET UP ");
-      Serial.print(key - MIN_MUSIC_KEYBOARD, DEC);
-      Serial.println();
     } else {
       midiNoteOff(scaleNote(key), keyToChannel(key));
-      Serial.print("NOTEOFF ");
-      Serial.print(scaleNote(key), DEC);
-      Serial.println();
     }
   }
 }
 
 void loop()
 {
+#if ENABLE_INPUT
   for (int i = 0; i < NUM_KEYS; i++) {
     keyScan[i] = false;
   }
@@ -457,9 +458,12 @@ void loop()
       digitalWrite(KBD_CLOCK_PIN, 0);
       digitalWrite(KBD_CLOCK_PIN, 1);
     }
+#if DEBUG_INPUT
     hasData += hardwareBytes[i] != 0;
+#endif
   }
-  if (DEBUG_INPUT && hasData) {
+#if DEBUG_INPUT
+  if (hasData) {
     for (int i = 0; i < 16; i++)
     {
       Serial.print(hardwareBytes[i], DEC);
@@ -468,10 +472,18 @@ void loop()
 
     Serial.print('\n');
   }
-
+#endif
   getScannedKeys(hardwareBytes);
-
   for (int i = 0; i < NUM_KEYS; i++) {
     keyOut(i);
   }
+  
+#else /* ENABLE_INPUT */
+  midiNoteOn(60,0);
+  delay(1000);
+  midiNoteOff(60,0);
+  delay(1000);
+
+#endif /* ENABLE_INPUT */
+
 }
