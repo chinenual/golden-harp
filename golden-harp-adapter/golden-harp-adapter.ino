@@ -10,19 +10,17 @@
 // 3 = GND (MIDI pin 2)
 // 4 = D11 (MIDI pin 5)
 
+#define DEBUG_INPUT 0
+
 // We assume a simple Arduino (e.g. Uno) with only a single UART TX/RX pair.   We use that connection for the USB connection
 // to the host computer.   We use software serial for both MIDI and the keyboard controller connnection.
 
 // For the serial connection to MIDI:
 #include <SendOnlySoftwareSerial.h>
 
-#define ENABLE_INPUT 1 /* to isolate the MIDI I/O from the controller I/O for debugging */
-
-#if ENABLE_INPUT
 // For the serial connection to the keyboard controller:
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#endif
 
 #define MIDI_BAUD 31250
 #define USB_BAUD  9600 // use low baud for the USB port in attempt to reduce interference with real-time MIDI
@@ -41,7 +39,6 @@
 
 #define NUM_KEYS 128
 
-#define DEBUG_INPUT 0
 
 
 // there are three distinct sets of "note" index values - I use the following terms to keep them from being confused:
@@ -301,14 +298,12 @@ void setup()
 
   Serial.begin(USB_BAUD);
 
-#if ENABLE_INPUT
   pinMode(KBD_LATCH_PIN, OUTPUT);
   pinMode(KBD_CLOCK_PIN, OUTPUT);
   pinMode(KBD_READ_PIN, INPUT);
 
   digitalWrite(KBD_LATCH_PIN, 0);
   digitalWrite(KBD_CLOCK_PIN, 1);
-#endif
 
   for (int i = 0; i < NUM_KEYS; i++) {
     keyState[i] = false;
@@ -439,7 +434,7 @@ void keyOut(int key) {
 void loop()
 {
   unsigned long start = millis();
-#if ENABLE_INPUT
+  
   for (int i = 0; i < NUM_KEYS; i++) {
     keyScan[i] = false;
   }
@@ -482,13 +477,6 @@ void loop()
     keyOut(i);
   }
   
-#else /* ENABLE_INPUT */
-  midiNoteOn(60,0);
-  delay(1000);
-  midiNoteOff(60,0);
-  delay(1000);
-
-#endif /* ENABLE_INPUT */
 
   unsigned long elapsed = millis() - start;
   if (elapsed < LOOP_TIME) {
