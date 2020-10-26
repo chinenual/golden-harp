@@ -297,6 +297,7 @@ void setup()
   midiSerialOut.begin(MIDI_BAUD);
 
   Serial.begin(USB_BAUD);
+  Serial.println("# begin setup");
 
   pinMode(KBD_LATCH_PIN, OUTPUT);
   pinMode(KBD_CLOCK_PIN, OUTPUT);
@@ -309,17 +310,18 @@ void setup()
     keyState[i] = false;
   }
 
-  // default to a major scale based at middle-C (and the left strip 2 octaves higher)
-  int scaleDefinition[] = { 0, 2, 4, 5, 7, 9, 11, -1 };
-  scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP, scaleDefinition, MIDI_C4);
-  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4 + 24);
+  // default to a major scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
+  int scaleDefinition[] = { 0, 4, 7, -1 };
+  scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP, scaleDefinition, MIDI_C4-24);
+  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4-24 + 12);
   r_channel = 0; // "ALL"
   l_channel = 0; // "ALL"
+  Serial.println("# end setup");
 }
 
 void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) {
   int j = 0;
-  for (int i = 0; i < MAX_R_STRIP - MIN_R_STRIP; i++) {
+  for (int i = 0; i < numValues; i++) {
     if (scaleDefinition[j] < 0) {
       // next octave
       j = 0;
@@ -331,7 +333,9 @@ void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) 
 }
 
 void addKey(int key) {
-  //Serial.print("saw ");Serial.print(key,DEC);Serial.println();
+#if DEBUG_INPUT 
+  Serial.print("# saw ");Serial.print(key,DEC);Serial.println();
+#endif
   keyScan[key] = true;
 }
 
@@ -359,8 +363,14 @@ void getScannedKeys(volatile byte hardwareData[]) {
 
 int scaleNote(int key) {
   if (key >= MIN_R_STRIP && key <= MAX_R_STRIP) {
+#if DEBUG_INPUT 
+  Serial.print("# saw R ");Serial.print(key,DEC);Serial.print(" -> ");Serial.println(r_scale[key - MIN_R_STRIP],DEC);
+#endif
     return r_scale[key - MIN_R_STRIP];
   } else {
+#if DEBUG_INPUT 
+  Serial.print("# saw L ");Serial.print(key,DEC);Serial.print(" -> ");Serial.println(l_scale[key - MIN_L_STRIP],DEC);
+#endif
     return l_scale[key - MIN_L_STRIP];
   }
 }
@@ -463,6 +473,7 @@ void loop()
   }
 #if DEBUG_INPUT
   if (hasData) {
+    Serial.print("#");
     for (int i = 0; i < 16; i++)
     {
       Serial.print(hardwareBytes[i], DEC);
