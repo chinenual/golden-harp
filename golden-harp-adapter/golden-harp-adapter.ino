@@ -32,7 +32,7 @@
 #define KBD_READ_PIN 8
 #define KBD_READ_PIN_REGISTER PINB
 
-// time in milliseconds for each scan of the controller; without this, we sometimes see both ON and OFF 
+// time in milliseconds for each scan of the controller; without this, we sometimes see both ON and OFF
 // events within a millisecond of each other. Tune this so that the controller is responsive, but not
 // spewing a lot of overlapping MIDI events
 #define LOOP_TIME 20
@@ -54,6 +54,8 @@
 #define MIN_MUSIC_KEYBOARD 60   // the leftmost C
 #define MAX_MUSIC_KEYBOARD 96   // the rightmost C
 
+#define MAX_PRESETS 10
+#define MAX_SCALES  10
 
 #define MIDI_C4 60 // MIDI note value for middle-C
 #define MIDI_VELOCITY 64
@@ -75,17 +77,15 @@ typedef struct {
 typedef struct {
   stripPreset l_preset;
   stripPreset r_preset;
-
-  int r_baseNote;
-  int l_scale;
-  int r_midi_channel;
 } preset;
 
-typedef struct {
+typedef int scaleDefinition[12];
+
+struct {
   int n_scales;
   int n_presets;
-  preset presets[37];
-  int scaleDefs; // first scaledef - the rest are scanned linearly using -1 to separate each scale definition
+  preset presets[MAX_PRESETS];
+  scaleDefinition scales[MAX_SCALES];
 } config;
 
 
@@ -310,12 +310,38 @@ void setup()
     keyState[i] = false;
   }
 
-  // default to a major scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
-  int scaleDefinition[] = { 0, 4, 7, -1 };
-  scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP, scaleDefinition, MIDI_C4-24);
-  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP, scaleDefinition, MIDI_C4-24 + 12);
-  r_channel = 0; // "ALL"
-  l_channel = 0; // "ALL"
+  //default to two presets - 1: major triad, 2: minor triad
+
+  config.n_scales = 2;
+  config.n_presets = 2;
+
+  config.scales[0][0] = 0;
+  config.scales[0][1] = 4;
+  config.scales[0][2] = 7;
+  config.scales[0][3] = -1;
+
+  config.scales[1][0] = 0;
+  config.scales[1][1] = 3;
+  config.scales[1][2] = 7;
+  config.scales[1][3] = -1;
+
+  // major scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
+  config.presets[0].l_preset.baseNote = MIDI_C4 - 24 + 12;
+  config.presets[0].l_preset.scale = 0;
+  config.presets[0].l_preset.midiChannel = 0; // "All"
+  config.presets[0].r_preset.baseNote = MIDI_C4 - 24;
+  config.presets[0].r_preset.scale = 0;
+  config.presets[0].r_preset.midiChannel = 0; // "All"
+
+  // minor scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
+  config.presets[1].l_preset.baseNote = MIDI_C4 - 24 + 12;
+  config.presets[1].l_preset.scale = 1;
+  config.presets[1].l_preset.midiChannel = 0; // "All"
+  config.presets[1].r_preset.baseNote = MIDI_C4 - 24;
+  config.presets[1].r_preset.scale = 1;
+  config.presets[1].r_preset.midiChannel = 0; // "All"
+
+  usePreset(0);
   Serial.println("# end setup");
 }
 
@@ -333,8 +359,8 @@ void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) 
 }
 
 void addKey(int key) {
-#if DEBUG_INPUT 
-  Serial.print("# saw ");Serial.print(key,DEC);Serial.println();
+#if DEBUG_INPUT
+  Serial.print("# saw "); Serial.print(key, DEC); Serial.println();
 #endif
   keyScan[key] = true;
 }
@@ -363,13 +389,13 @@ void getScannedKeys(volatile byte hardwareData[]) {
 
 int scaleNote(int key) {
   if (key >= MIN_R_STRIP && key <= MAX_R_STRIP) {
-#if DEBUG_INPUT 
-  Serial.print("# saw R ");Serial.print(key,DEC);Serial.print(" -> ");Serial.println(r_scale[key - MIN_R_STRIP],DEC);
+#if DEBUG_INPUT
+    Serial.print("# saw R "); Serial.print(key, DEC); Serial.print(" -> "); Serial.println(r_scale[key - MIN_R_STRIP], DEC);
 #endif
     return r_scale[key - MIN_R_STRIP];
   } else {
-#if DEBUG_INPUT 
-  Serial.print("# saw L ");Serial.print(key,DEC);Serial.print(" -> ");Serial.println(l_scale[key - MIN_L_STRIP],DEC);
+#if DEBUG_INPUT
+    Serial.print("# saw L "); Serial.print(key, DEC); Serial.print(" -> "); Serial.println(l_scale[key - MIN_L_STRIP], DEC);
 #endif
     return l_scale[key - MIN_L_STRIP];
   }
@@ -414,9 +440,24 @@ void midiNoteOff(int note, int channel) {
 }
 
 void usePreset(int num) {
-      Serial.print("PRESET ");
-      Serial.print(num, DEC);
-      Serial.println();
+  Serial.print("PRESET ");
+  Serial.print(num, DEC);
+  Serial.println();
+
+  if (num > config.n_presets) {
+    Serial.println("  -> no such preset defined. Ignored.");
+    return;
+  }
+
+  scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP,
+            config.scales[config.presets[num].r_preset.scale],
+            config.presets[num].r_preset.baseNote);
+  r_channel = config.presets[num].r_preset.midiChannel;
+
+  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP,
+            config.scales[config.presets[num].l_preset.scale],
+            config.presets[num].l_preset.baseNote);
+  r_channel = config.presets[num].l_preset.midiChannel;
 }
 
 void keyOut(int key) {
@@ -444,7 +485,7 @@ void keyOut(int key) {
 void loop()
 {
   unsigned long start = millis();
-  
+
   for (int i = 0; i < NUM_KEYS; i++) {
     keyScan[i] = false;
   }
@@ -487,10 +528,10 @@ void loop()
   for (int i = 0; i < NUM_KEYS; i++) {
     keyOut(i);
   }
-  
+
 
   unsigned long elapsed = millis() - start;
   if (elapsed < LOOP_TIME) {
-    delay(LOOP_TIME-elapsed); 
+    delay(LOOP_TIME - elapsed);
   }
 }
