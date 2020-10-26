@@ -1,20 +1,20 @@
-// pins for Harp Controller Keyboard DIN connector, left to right, back view, tab on bottom
-// 1 = D3
-// 2 = D8
-// 3 = GND
-// 4 = 5V
-// 5 = D2
+// pins for Harp Controller Keyboard DIN connector, left to right, back view, tab on top
+// 1 = D2  (MIDI pin 1)
+// 2 = 5V  (MIDI pin 4)
+// 3 = GND (MIDI pin 2)
+// 4 = D8  (MIDI pin 5)
+// 5 = D3  (MIDI pin 3)
 
-// pins for the MIDI OUT connection, again, left to right, back view, tab on bottom
-// 2 = D11
-// 3 = GND
-// 4 = 5V (via 220ohm resistor)
+// pins for the MIDI OUT connection, again, left to right, back view, tab on top
+// 2 = 5V  (MIDI pin 4) (via 220ohm resistor)
+// 3 = GND (MIDI pin 2)
+// 4 = D11 (MIDI pin 5)
 
 // We assume a simple Arduino (e.g. Uno) with only a single UART TX/RX pair.   We use that connection for the USB connection
 // to the host computer.   We use software serial for both MIDI and the keyboard controller connnection.
 
 // For the serial connection to MIDI:
-#include <SoftwareSerial.h>
+#include <SendOnlySoftwareSerial.h>
 
 #define ENABLE_INPUT 1 /* to isolate the MIDI I/O from the controller I/O for debugging */
 
@@ -25,10 +25,9 @@
 #endif
 
 #define MIDI_BAUD 31250
-#define USB_BAUD  19200
+#define USB_BAUD  9600 // use low baud for the USB port in attempt to reduce interference with real-time MIDI
 
 #define MIDI_TX_PIN 11
-#define MIDI_RX_PIN 10
 
 #define KBD_LATCH_PIN 2
 #define KBD_CLOCK_PIN 3
@@ -288,12 +287,11 @@ int hardwareToKeyTable[NUM_KEYS] = {
 //   95: B2:  0:0:0:0:0:0:0:16:0:0:0:0:0:0:0:0:   [7 - 16]
 //   96: C3:  0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:0:   [5 - 16]
 
-SoftwareSerial midiSerialOut(MIDI_RX_PIN, MIDI_TX_PIN);
+SendOnlySoftwareSerial midiSerialOut(MIDI_TX_PIN);
 
 void setup()
 {
   pinMode(MIDI_TX_PIN, OUTPUT);
-  pinMode(MIDI_RX_PIN, INPUT);  // unused - but required for library initialization
   midiSerialOut.begin(MIDI_BAUD);
 
   Serial.begin(USB_BAUD);
