@@ -34,6 +34,11 @@
 #define KBD_READ_PIN 8
 #define KBD_READ_PIN_REGISTER PINB
 
+// time in milliseconds for each scan of the controller; without this, we sometimes see both ON and OFF 
+// events within a millisecond of each other. Tune this so that the controller is responsive, but not
+// spewing a lot of overlapping MIDI events
+#define LOOP_TIME 20
+
 #define NUM_KEYS 128
 
 #define DEBUG_INPUT 0
@@ -433,6 +438,7 @@ void keyOut(int key) {
 
 void loop()
 {
+  unsigned long start = millis();
 #if ENABLE_INPUT
   for (int i = 0; i < NUM_KEYS; i++) {
     keyScan[i] = false;
@@ -484,4 +490,8 @@ void loop()
 
 #endif /* ENABLE_INPUT */
 
+  unsigned long elapsed = millis() - start;
+  if (elapsed < LOOP_TIME) {
+    delay(LOOP_TIME-elapsed); 
+  }
 }
