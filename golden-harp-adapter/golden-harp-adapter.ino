@@ -11,6 +11,7 @@
 // 4 = D11 (MIDI pin 5)
 
 #define DEBUG_INPUT 0
+#define VERBOSE_MIDI 0
 
 // We assume a simple Arduino (e.g. Uno) with only a single UART TX/RX pair.   We use that connection for the USB connection
 // to the host computer.   We use software serial for both MIDI and the keyboard controller connnection.
@@ -21,6 +22,9 @@
 // For the serial connection to the keyboard controller:
 #include <avr/io.h>
 #include <avr/interrupt.h>
+
+// we use EEPROM as non-volatile ram to store preset configuration between reboots
+// my Uno development board supports 1024 bytes of EEPROM
 
 #define MIDI_BAUD 31250
 #define USB_BAUD  9600 // use low baud for the USB port in attempt to reduce interference with real-time MIDI
@@ -415,13 +419,15 @@ void midiNoteOn(int note, int channel) {
   midiSerialOut.write(note);
   midiSerialOut.write(MIDI_VELOCITY);
 
-  Serial.print(" MIDI note on: ");
+#if VERBOSE_MIDI
+  Serial.print("# MIDI note on: ");
   Serial.print(opcode, HEX);
   Serial.print(" ");
   Serial.print(note, HEX);
   Serial.print(" ");
   Serial.print(MIDI_VELOCITY, HEX);
   Serial.println();
+#endif
 }
 
 void midiNoteOff(int note, int channel) {
@@ -430,22 +436,24 @@ void midiNoteOff(int note, int channel) {
   midiSerialOut.write(note);
   midiSerialOut.write((int)0);
 
-  Serial.print(" MIDI note off: ");
+#if VERBOSE_MIDI
+  Serial.print("# MIDI note off: ");
   Serial.print(opcode, HEX);
   Serial.print(" ");
   Serial.print(note, HEX);
   Serial.print(" ");
   Serial.print(0, HEX);
   Serial.println();
+#endif
 }
 
 void usePreset(int num) {
-  Serial.print("PRESET ");
+  Serial.print("# PRESET ");
   Serial.print(num, DEC);
   Serial.println();
 
   if (num > config.n_presets) {
-    Serial.println("  -> no such preset defined. Ignored.");
+    Serial.println("#  -> no such preset defined. Ignored.");
     return;
   }
 
