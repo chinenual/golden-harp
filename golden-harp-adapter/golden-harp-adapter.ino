@@ -13,6 +13,10 @@
 #define DEBUG_INPUT 0
 #define VERBOSE_MIDI 0
 
+// needs to be in main sketch since we reference the shell variable
+#include <SimpleSerialShell.h>
+
+
 // We assume a simple Arduino (e.g. Uno) with only a single UART TX/RX pair.   We use that connection for the USB connection
 // to the host computer.   We use software serial for both MIDI and the keyboard controller connnection.
 
@@ -56,6 +60,7 @@ void setup()
   Serial.begin(USB_BAUD);
   Serial.println("# begin setup");
 
+  shell_setup();
   midi_setup();
   harpin_setup();
   config_setup(); 
@@ -66,6 +71,10 @@ void setup()
 void loop()
 {
   unsigned long start = millis();
+
+  if (Serial.available()) {
+    shell.executeIfInput();
+  }
 
   harpin_scan();
 
