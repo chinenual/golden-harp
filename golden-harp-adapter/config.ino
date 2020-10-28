@@ -95,6 +95,7 @@ void packScale(byte numNotes, int intervals[], byte packed[]) {
 int unpackScale(byte packed[], int intervals[]) {
   int numNotes = packed[0] & 0x0f;
   int j = 0;
+  //Serial.print("UNPACKED ");
   for (int i = 0; i < numNotes; i++) {
     if (i % 2) {
       // even
@@ -105,7 +106,9 @@ int unpackScale(byte packed[], int intervals[]) {
       // next nibble will be in the next packed byte
       j++;
     }
+    //Serial.print(" ");Serial.print(intervals[i],DEC);
   }
+  //Serial.println();
   return numNotes;
 }
 
@@ -122,7 +125,9 @@ void scaleInit(byte packed[], int baseNote, int numValues, int scale[]) {
     }
     scale[i] = baseNote + scaleOctave[j];
     j++;
+    //Serial.print(" ");Serial.print(scale[i],DEC);
   }
+  //Serial.println();
 }
 
 void usePreset(int num) {
@@ -135,15 +140,15 @@ void usePreset(int num) {
     return;
   }
 
-  scaleInit(MAX_R_STRIP - MIN_R_STRIP,
-            config.packedScaleDefs[config.presets[num].r_preset.scale],
+  scaleInit(config.packedScaleDefs[config.presets[num].r_preset.scale],
             config.presets[num].r_preset.baseNote,
+            MAX_R_STRIP - MIN_R_STRIP,
             r_scale);
   r_channel = config.presets[num].r_preset.midiChannel;
 
-  scaleInit(MAX_L_STRIP - MIN_L_STRIP,
-            config.packedScaleDefs[config.presets[num].l_preset.scale],
+  scaleInit(config.packedScaleDefs[config.presets[num].l_preset.scale],
             config.presets[num].l_preset.baseNote,
+            MAX_L_STRIP - MIN_L_STRIP,
             l_scale);
   r_channel = config.presets[num].l_preset.midiChannel;
 }
