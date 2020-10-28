@@ -1,29 +1,43 @@
-#define MAX_PRESETS 10
-#define MAX_SCALES  10
-
 int r_channel; // MIDI channel for right strip
 int l_channel; // MIDI channel for right strip
 int r_scale[MAX_R_STRIP - MIN_R_STRIP + 1]; // scaling offsets for the right strip
 int l_scale[MAX_L_STRIP - MIN_L_STRIP + 1]; // scaling offsets for the left strip
 
-typedef struct {
-  int baseNote;
-  int scale;
-  int midiChannel;
-} stripPreset;
+struct stripPreset {
+  byte baseNote;
+  byte scale;
+  byte midiChannel;
+};
 
-typedef struct {
+// SIZEOF(preset) == 6 bytes
+struct preset {
   stripPreset l_preset;
   stripPreset r_preset;
-} preset;
+};
 
-typedef int scaleDefinition[12];
+// SIZEOF(packedScaleDefinition) == 6 bytes
+typedef byte packedScaleDefinition[6];
+
+// so if we map all keys to trigger presets tthere are 37 presets. If each has two distict scales, we need 2*37 scales
+// so 666 bytes.  Wont fit in 512byte EEPROM.  So we'll go with max of 48 scales to fit.
+//    6 * 37 = 222 bytes for presets
+//    6 * 48 = 288 bytes for packed scale definitions
+//             510 bytes total
+#define CONFIG_IN_EEPROM 0
+#if CONFIG_IN_EEPROM
+#define MAX_PRESETS 37
+#define MAX_SCALES  48
+#else
+// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes needed
+#define MAX_PRESETS 10
+#define MAX_SCALES  10
+#endif
 
 struct {
-  int n_scales;
-  int n_presets;
+  byte n_scales;
+  byte n_presets;
   preset presets[MAX_PRESETS];
-  scaleDefinition scales[MAX_SCALES];
+  packedScaleDefinition packedScaleDefs[MAX_SCALES];
 } config;
 
 void config_setup() {
@@ -32,17 +46,14 @@ void config_setup() {
   config.n_scales = 2;
   config.n_presets = 2;
 
-  config.scales[0][0] = 0;
-  config.scales[0][1] = 4;
-  config.scales[0][2] = 7;
-  config.scales[0][3] = -1;
+  // chromatic
+  int intervals0[] = {0, 1, 2, 3, 4, 5, 6, 7};
+  packScale(8, intervals0, config.packedScaleDefs[0]);
+  // "pipes of pan - IV"
+  int intervals1[] = {0, 2, 4, 7, 10, 11};
+  packScale(6, intervals1, config.packedScaleDefs[1]);
 
-  config.scales[1][0] = 0;
-  config.scales[1][1] = 3;
-  config.scales[1][2] = 7;
-  config.scales[1][3] = -1;
-
-  // major scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
+  // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
   config.presets[0].l_preset.baseNote = MIDI_C4 - 24 + 12;
   config.presets[0].l_preset.scale = 0;
   config.presets[0].l_preset.midiChannel = 0; // "All"
@@ -50,7 +61,7 @@ void config_setup() {
   config.presets[0].r_preset.scale = 0;
   config.presets[0].r_preset.midiChannel = 0; // "All"
 
-  // minor scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
+  // "Pipes of Pan - IV" scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
   config.presets[1].l_preset.baseNote = MIDI_C4 - 24 + 12;
   config.presets[1].l_preset.scale = 1;
   config.presets[1].l_preset.midiChannel = 0; // "All"
@@ -58,18 +69,58 @@ void config_setup() {
   config.presets[1].r_preset.scale = 1;
   config.presets[1].r_preset.midiChannel = 0; // "All"
 
+  config_print();
+
   usePreset(0);
 }
 
-void scaleInit(int scale[], int numValues, int scaleDefinition[], int baseNote) {
+void packScale(byte numNotes, int intervals[], byte packed[]) {
+  // first nibble of the packed array is a note count
+  // each following nibble is an interval.
+  packed[0] = numNotes;
+  int j = 0;
+  for (int i = 0; i < numNotes; i++) {
+    if (i % 2) {
+      // even
+      packed[j] = intervals[i];
+    } else {
+      // odds go into the upper nibble
+      packed[j] |= (intervals[i] << 4);
+      // next nibble will be in the next packed byte
+      j++;
+    }
+  }
+}
+
+int unpackScale(byte packed[], int intervals[]) {
+  int numNotes = packed[0] & 0x0f;
+  int j = 0;
+  for (int i = 0; i < numNotes; i++) {
+    if (i % 2) {
+      // even
+      intervals[i] = packed[j] & 0x0f;
+    } else {
+      // odds go into the upper nibble
+      intervals[i] = (packed[j] >> 4) & 0x0f;
+      // next nibble will be in the next packed byte
+      j++;
+    }
+  }
+  return numNotes;
+}
+
+void scaleInit(byte packed[], int baseNote, int numValues, int scale[]) {
+  int scaleOctave[12];
+  int scaleLength = unpackScale(packed, scaleOctave);
+
   int j = 0;
   for (int i = 0; i < numValues; i++) {
-    if (scaleDefinition[j] < 0) {
+    if (j >= scaleLength) {
       // next octave
       j = 0;
       baseNote += 12;
     }
-    scale[i] = baseNote + scaleDefinition[j];
+    scale[i] = baseNote + scaleOctave[j];
     j++;
   }
 }
@@ -84,14 +135,68 @@ void usePreset(int num) {
     return;
   }
 
-  scaleInit(r_scale, MAX_R_STRIP - MIN_R_STRIP,
-            config.scales[config.presets[num].r_preset.scale],
-            config.presets[num].r_preset.baseNote);
+  scaleInit(MAX_R_STRIP - MIN_R_STRIP,
+            config.packedScaleDefs[config.presets[num].r_preset.scale],
+            config.presets[num].r_preset.baseNote,
+            r_scale);
   r_channel = config.presets[num].r_preset.midiChannel;
 
-  scaleInit(l_scale, MAX_L_STRIP - MIN_L_STRIP,
-            config.scales[config.presets[num].l_preset.scale],
-            config.presets[num].l_preset.baseNote);
+  scaleInit(MAX_L_STRIP - MIN_L_STRIP,
+            config.packedScaleDefs[config.presets[num].l_preset.scale],
+            config.presets[num].l_preset.baseNote,
+            l_scale);
   r_channel = config.presets[num].l_preset.midiChannel;
 }
 
+void config_print() {
+  config_printScales();
+  config_printPresets();
+}
+
+void config_printScales() {
+  Serial.print("n_scales = ");
+  Serial.println(config.n_scales, DEC);
+  for (int i = 0; i < config.n_scales; i++) {
+    Serial.print(i, DEC);
+    Serial.print(":");
+    config_printScale(config.packedScaleDefs[i]);
+  }
+}
+
+void config_printScale(byte packed[]) {
+  int intervals[12];
+  int n = unpackScale(packed, intervals);
+  for (int i = 0; i < n; i++) {
+    Serial.print(" ");
+    Serial.print(intervals[i]);
+  }
+  Serial.println();
+}
+
+void config_printPresets() {
+  Serial.print("n_presets = ");
+  Serial.println(config.n_presets, DEC);
+  for (int i = 0; i < config.n_presets; i++) {
+    Serial.print(i, DEC);
+    Serial.print(":");
+    config_printPreset(config.presets[i]);
+  }
+}
+
+void config_printPreset(struct preset p) {
+  Serial.print("LEFT: {");
+  Serial.print("base: ");
+  Serial.print(p.l_preset.baseNote);
+  Serial.print(", scale: ");
+  Serial.print(p.l_preset.scale);
+  Serial.print(", chan: ");
+  Serial.print(p.l_preset.midiChannel);
+  Serial.print("} RIGHT: {");
+  Serial.print("base: ");
+  Serial.print(p.r_preset.baseNote);
+  Serial.print(", scale: ");
+  Serial.print(p.r_preset.scale);
+  Serial.print(", chan: ");
+  Serial.print(p.r_preset.midiChannel);
+  Serial.println("}");
+}
