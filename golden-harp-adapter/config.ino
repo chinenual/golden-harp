@@ -69,8 +69,6 @@ void config_setup() {
   config.presets[1].r_preset.scale = 1;
   config.presets[1].r_preset.midiChannel = 0; // "All"
 
-  config_print();
-
   usePreset(0);
 }
 
