@@ -298,7 +298,7 @@ void getScannedKeys(volatile byte hardwareData[]) {
   }
 }
 
-void harpin_scan() {
+void harpin_loop() {
   for (int i = 0; i < NUM_KEYS; i++) {
     keyScan[i] = false;
   }

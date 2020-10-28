@@ -13,8 +13,8 @@
 #define DEBUG_INPUT 0
 #define VERBOSE_MIDI 0
 
-// needs to be in main sketch since we reference the shell variable
-#include <SimpleSerialShell.h>
+#include <ArduinoJson.h>
+
 
 
 // We assume a simple Arduino (e.g. Uno) with only a single UART TX/RX pair.   We use that connection for the USB connection
@@ -60,7 +60,7 @@ void setup()
   Serial.begin(USB_BAUD);
   Serial.println("# begin setup");
 
-  shell_setup();
+  usbconfig_setup();
   midi_setup();
   harpin_setup();
   config_setup(); 
@@ -72,12 +72,8 @@ void loop()
 {
   unsigned long start = millis();
 
-  if (Serial.available()) {
-    shell.executeIfInput();
-  }
-
-  harpin_scan();
-
+  usbconfig_loop();
+  harpin_loop();
 
   unsigned long elapsed = millis() - start;
   if (elapsed < LOOP_TIME) {
