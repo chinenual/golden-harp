@@ -28,6 +28,8 @@
 
 #define MIDI_TX_PIN 11
 
+#define NOTE_ON_LED_PIN 13
+
 #define KBD_LATCH_PIN 2
 #define KBD_CLOCK_PIN 3
 #define KBD_READ_PIN 8

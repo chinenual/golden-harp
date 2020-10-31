@@ -214,6 +214,7 @@ void harpin_setup() {
   pinMode(KBD_LATCH_PIN, OUTPUT);
   pinMode(KBD_CLOCK_PIN, OUTPUT);
   pinMode(KBD_READ_PIN, INPUT);
+  pinMode(NOTE_ON_LED_PIN, OUTPUT);
 
   digitalWrite(KBD_LATCH_PIN, 0);
   digitalWrite(KBD_CLOCK_PIN, 1);
@@ -239,9 +240,11 @@ int keyToChannel(int key) {
   }
 }
 
-void keyOut(int key) {
+int keyOut(int key) {
+  int notePlaying = 0;
   if (keyScan[key] && keyState[key]) {
     // already sent - key still depressed
+    notePlaying = 1;
   } else if (keyScan[key]) {
     // detected "key down"
     keyState[key] = true;
@@ -249,6 +252,7 @@ void keyOut(int key) {
       usePreset(key - MIN_MUSIC_KEYBOARD);
     } else {
       midiNoteOn(scaleNote(key), keyToChannel(key));
+      notePlaying = 1;
     }
   } else if (keyState[key]) {
     // no longer "down" - so detected "key up"
@@ -259,6 +263,7 @@ void keyOut(int key) {
       midiNoteOff(scaleNote(key), keyToChannel(key));
     }
   }
+  return notePlaying;
 }
 
 int scaleNote(int key) {
@@ -338,7 +343,13 @@ void harpin_loop() {
   }
 #endif
   getScannedKeys(hardwareBytes);
+  int notesPlaying = 0;
   for (int i = 0; i < NUM_KEYS; i++) {
-    keyOut(i);
+    notesPlaying += keyOut(i);
+  }
+  if (notesPlaying > 0) {
+    digitalWrite(NOTE_ON_LED_PIN, 1);
+  } else {
+    digitalWrite(NOTE_ON_LED_PIN, 0);
   }
 }
