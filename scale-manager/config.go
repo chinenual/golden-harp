@@ -4,15 +4,31 @@ import (
 	"fmt"
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/pkg/errors"
-	"regexp"
 	"strconv"
 	"strings"
 )
 
-var scales []string
-var intervals [][]int
+var scaleMap map[string]Scale
+var packedScales []Scale
+var packedPresets []Preset
+
+type Scale struct {
+	Name      string
+	Intervals []int
+}
+
+type Preset struct {
+	KeyPosition  int
+	LeftScale    Scale
+	LeftOffset   int
+	LeftChannel  int
+	RightScale   Scale
+	RightOffset  int
+	RightChannel int
+}
 
 func main() {
+	scaleMap = make(map[string]Scale)
 	var f *excelize.File
 	var err error
 	if f, err = excelize.OpenFile("HarpConfig.xlsx"); err != nil {
@@ -20,101 +36,139 @@ func main() {
 		return
 	}
 
-	readScales(f)
-	readPresets(f)
+	if err = readScales(f); err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err = readPresets(f); err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	fmt.Printf("INTERVALS: %v\n", intervals)
+	fmt.Printf("Scales: %v\n", scaleMap)
+	fmt.Printf("PackedPresets: %v\n", packedPresets)
 }
 
-func readScales(f *excelize.File) {
+func readScales(f *excelize.File) (err error) {
 	rows, err := f.Rows("Scales")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	var count = 0
+	var blankRowCount = 0
 	for rows.Next() {
 		// skip the header rows
-		colVals, err := rows.Columns()
+		var colVals []string
+		if colVals, err = rows.Columns(); err != nil {
+			return err
+		}
 		if count >= 1 {
-			if err != nil {
-				fmt.Println(err)
+			if len(colVals) > 12 {
+				if strings.TrimSpace(colVals[0]) == "" {
+					blankRowCount++
+					if blankRowCount > 3 {
+						break
+					}
+				} else {
+					blankRowCount = 0
+					var scale Scale
+					scale.Name = colVals[0]
+					for i := 0; i < 12; i++ {
+						val := colVals[i+1]
+						if strings.TrimSpace(val) != "" {
+							scale.Intervals = append(scale.Intervals, i)
+						}
+					}
+					scaleMap[scale.Name] = scale
+				}
 			}
-			if strings.TrimSpace(colVals[0]) == "" {
-				break
-			}
-			fmt.Printf("name: %s, intervals: %s\n", colVals[0], colVals[1])
-			scales = append(scales, colVals[0])
-			var newscale []int
-			if newscale, err = parseIntervals(colVals[1]); err != nil {
-				fmt.Printf("ERROR: Row %d: %v\n",count+1,err)
-				//return
-			}
-			intervals = append(intervals, newscale)
 		}
 		count = count + 1
 	}
+	return
 }
 
-func readPresets(f *excelize.File) {
+func readPresets(f *excelize.File) (err error) {
 	rows, err := f.Rows("Presets")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	var count = 0
+	var keyPosition = 0
 	for rows.Next() {
 		// skip the header rows
-		colVals, err := rows.Columns()
+		var colVals []string
+		if colVals, err = rows.Columns(); err != nil {
+			return err
+		}
 		if count >= 2 {
-			if err != nil {
-				fmt.Println(err)
-			}
-			if strings.TrimSpace(colVals[2]) == "" {
+			if keyPosition > 46 {
 				break
 			}
-			fmt.Printf("left: %s, base: %s, chan: %s   right: %s, base: %s, chan: %s\n",
-				colVals[2], colVals[3], colVals[4],
-				colVals[6], colVals[7], colVals[8])
+			fmt.Printf("preset %d %d %d\n", count, keyPosition, len(colVals))
+			if len(colVals) >= 8 {
+				if strings.TrimSpace(colVals[2]) != "" {
+					var preset Preset
+					preset.KeyPosition = keyPosition
+					if preset.LeftScale, err = useScale(colVals[2]); err != nil {
+						return err
+					}
+					if preset.LeftOffset, err = parseOffset(colVals[3]); err != nil {
+						return err
+					}
+					if preset.LeftChannel, err = parseChannel(colVals[4]); err != nil {
+						return err
+					}
+					if preset.RightScale, err = useScale(colVals[6]); err != nil {
+						return err
+					}
+					if preset.RightOffset, err = parseOffset(colVals[7]); err != nil {
+						return err
+					}
+					if (len(colVals)>8) { // channel may be blank and the reader won't include that in the columns
+						if preset.RightChannel, err = parseChannel(colVals[8]); err != nil {
+							return err
+						}
+					} else {
+						preset.RightChannel = 1
+					}
+					packedPresets = append(packedPresets, preset)
+				}
+			}
+			keyPosition++
 		}
 		count = count + 1
 	}
+	return
 }
 
-func parseIntervals(s string) (result []int, err error) {
-	re := regexp.MustCompile("^[b#]?(\\d+)[b#]?$")
-	raw := strings.Fields(s)
-	for _, r := range raw {
-		var offset = 0
-		var valstring []string
-		if valstring = re.FindStringSubmatch(r); valstring == nil {
-			err = errors.Errorf("Invalid interval %s - bad syntax. should be a number with an optional # or b suffix/prefix", r)
-			return
-		}
-		if strings.HasPrefix(r, "#") || strings.HasSuffix(r, "#") {
-			offset = 1
-		} else if strings.HasPrefix(r, "b") || strings.HasSuffix(r, "b") {
-			offset = -1
-		}
-		val, _ := strconv.Atoi(valstring[1])
-		// if raw was "b3", val is now "3"
-		var majorIntervals = []int{-1, 0, 2, 4, 5, 7, 9, 11, 12};
-		if val < 0 || val >= len(majorIntervals) {
-			err = errors.Errorf("Invalid interval %s - out of range (1 .. 8)", r)
-			return
-		}
-		val = majorIntervals[val];
-		// val is now the semitone offset in the octave for the 3rd degree of the major scale
-		val = val + offset
-		// val is now flattened or sharped if it had a b or # suffix/prefix.
-		if val < 0 || val > 12 {
-			err = errors.Errorf("Invalid interval %s - out of range", r)
-			return
-		}
-		if val < 12 {
-			// 8 (i.e. the octave - is acceptable in the config file, but its unused in the interval processing
-			result = append(result, val)
-		}
+func useScale(name string) (scale Scale, err error) {
+	var ok bool
+	scale, ok = scaleMap[name]
+	if !ok {
+		err = errors.Errorf("Reference to unknown scale \"%s\"", name)
+	}
+	return
+}
+
+func parseOffset(offsetName string) (offset int, err error) {
+	// IMPLEMENTME:
+	offset = 60
+	return
+}
+
+func parseChannel(channelString string) (channel int, err error) {
+	if strings.TrimSpace(channelString) == "" {
+		channel = 1
+		return
+	}
+	if channel, err = strconv.Atoi(channelString); err != nil {
+		return
+	}
+	if channel < 1 || channel > 16 {
+		err = errors.Errorf("Channel %s out of range - must be 1 .. 16", channelString)
 	}
 	return
 }
