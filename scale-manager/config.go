@@ -155,6 +155,7 @@ func useScale(name string) (scale Scale, err error) {
 
 func parseOffset(offsetName string) (offset int, err error) {
 	// IMPLEMENTME:
+	// Use Yamaha conventions: C3 == Middle-C == MIDI 60
 	offset = 60
 	return
 }
