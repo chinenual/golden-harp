@@ -20,10 +20,10 @@ type Scale struct {
 
 type Preset struct {
 	KeyPosition  int
-	LeftScale    Scale
+	LeftScale    int // packed index
 	LeftRoot     int
 	LeftChannel  int
-	RightScale   Scale
+	RightScale   int // packed index
 	RightRoot    int
 	RightChannel int
 }
@@ -47,7 +47,8 @@ func main() {
 	}
 
 	fmt.Printf("Scales: %v\n", scaleMap)
-	fmt.Printf("PackedPresets: %v\n", packedPresets)
+	fmt.Printf("PackedScales: %#v\n", packedScales)
+	fmt.Printf("PackedPresets: %#v\n", packedPresets)
 }
 
 func readScales(f *excelize.File) (err error) {
@@ -144,12 +145,19 @@ func readPresets(f *excelize.File) (err error) {
 	return
 }
 
-func useScale(name string) (scale Scale, err error) {
-	var ok bool
-	scale, ok = scaleMap[name]
+func useScale(name string) (packedIndex int, err error) {
+	scale, ok := scaleMap[name]
 	if !ok {
 		err = errors.Errorf("Reference to unknown scale \"%s\"", name)
 	}
+	for idx, packedScale := range(packedScales) {
+		if scale.Name == packedScale.Name {
+			packedIndex = idx
+			return
+		}
+	}
+	packedScales = append(packedScales, scale)
+    packedIndex = len(packedScales)-1
 	return
 }
 
