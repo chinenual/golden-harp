@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/pkg/errors"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -20,10 +21,10 @@ type Scale struct {
 type Preset struct {
 	KeyPosition  int
 	LeftScale    Scale
-	LeftOffset   int
+	LeftRoot     int
 	LeftChannel  int
 	RightScale   Scale
-	RightOffset  int
+	RightRoot    int
 	RightChannel int
 }
 
@@ -107,7 +108,6 @@ func readPresets(f *excelize.File) (err error) {
 			if keyPosition > 46 {
 				break
 			}
-			fmt.Printf("preset %d %d %d\n", count, keyPosition, len(colVals))
 			if len(colVals) >= 8 {
 				if strings.TrimSpace(colVals[2]) != "" {
 					var preset Preset
@@ -115,7 +115,7 @@ func readPresets(f *excelize.File) (err error) {
 					if preset.LeftScale, err = useScale(colVals[2]); err != nil {
 						return err
 					}
-					if preset.LeftOffset, err = parseOffset(colVals[3]); err != nil {
+					if preset.LeftRoot, err = parseRoot(colVals[3]); err != nil {
 						return err
 					}
 					if preset.LeftChannel, err = parseChannel(colVals[4]); err != nil {
@@ -124,10 +124,10 @@ func readPresets(f *excelize.File) (err error) {
 					if preset.RightScale, err = useScale(colVals[6]); err != nil {
 						return err
 					}
-					if preset.RightOffset, err = parseOffset(colVals[7]); err != nil {
+					if preset.RightRoot, err = parseRoot(colVals[7]); err != nil {
 						return err
 					}
-					if (len(colVals)>8) { // channel may be blank and the reader won't include that in the columns
+					if len(colVals) > 8 { // channel may be blank and the reader won't include that in the columns
 						if preset.RightChannel, err = parseChannel(colVals[8]); err != nil {
 							return err
 						}
@@ -153,10 +153,41 @@ func useScale(name string) (scale Scale, err error) {
 	return
 }
 
-func parseOffset(offsetName string) (offset int, err error) {
-	// IMPLEMENTME:
+func parseRoot(offsetName string) (root int, err error) {
 	// Use Yamaha conventions: C3 == Middle-C == MIDI 60
-	offset = 60
+
+	re := regexp.MustCompile("^([A-G])([b#]?)([-]?\\d+)$")
+	trimmed := strings.TrimSpace(offsetName)
+	var valstring []string
+	if valstring = re.FindStringSubmatch(trimmed); valstring == nil {
+		err = errors.Errorf("Invalid transpose root %s - bad syntax. should be a note name with an optional # or b suffix and required octave (e.g. C#2 or Bf-1)", trimmed)
+		return
+	}
+	// valstring[0] == the overall match
+	// valstring[1] == the note name
+	// valstring[2] == optional sharp or flat
+	// valstring[3] == octave
+	var m = map[string]int{
+		"C": 0,
+		"D": 2,
+		"E": 4,
+		"F": 5,
+		"G": 7,
+		"A": 9,
+		"B": 11,
+	}
+	base := m[valstring[1]]
+	sharpflat := 0
+	if valstring[2] == "#" {
+		sharpflat = 1
+	} else if valstring[2] == "b" {
+		sharpflat = -1
+	}
+	octave,_ := strconv.Atoi(valstring[3])
+	root = base + ((octave+2)*12) + sharpflat;
+	if root < 0 || root > 127 {
+		err = errors.Errorf("Invalid transpose root %s - must be in range C-2 .. G8", trimmed)
+	}
 	return
 }
 
