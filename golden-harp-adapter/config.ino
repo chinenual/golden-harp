@@ -28,7 +28,7 @@ typedef byte packedScaleDefinition[6];
 #define MAX_PRESETS 37
 #define MAX_SCALES  48
 #else
-// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes needed
+// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes needed in order to have enough free RAM
 #define MAX_PRESETS 10
 #define MAX_SCALES  10
 #endif
@@ -129,12 +129,12 @@ void scaleInit(byte packed[], int baseNote, int numValues, int scale[]) {
 }
 
 void usePreset(int num) {
-  Serial.print("# PRESET ");
-  Serial.print(num, DEC);
-  Serial.println();
+//  Serial.print("# PRESET ");
+//  Serial.print(num, DEC);
+//  Serial.println();
 
   if (num > config.n_presets) {
-    Serial.println("#  -> no such preset defined. Ignored.");
+//    Serial.println("#  -> no such preset defined. Ignored.");
     return;
   }
 

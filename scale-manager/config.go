@@ -28,27 +28,24 @@ type Preset struct {
 	RightChannel int
 }
 
-func main() {
+func LoadConfig(filename string) (err error) {
 	scaleMap = make(map[string]Scale)
 	var f *excelize.File
-	var err error
-	if f, err = excelize.OpenFile("HarpConfig.xlsx"); err != nil {
-		fmt.Println(err)
+	if f, err = excelize.OpenFile(filename); err != nil {
 		return
 	}
 
 	if err = readScales(f); err != nil {
-		fmt.Println(err)
 		return
 	}
 	if err = readPresets(f); err != nil {
-		fmt.Println(err)
 		return
 	}
 
-	fmt.Printf("Scales: %v\n", scaleMap)
-	fmt.Printf("PackedScales: %#v\n", packedScales)
-	fmt.Printf("PackedPresets: %#v\n", packedPresets)
+	//fmt.Printf("Scales: %v\n", scaleMap)
+	//fmt.Printf("PackedScales: %#v\n", packedScales)
+	//fmt.Printf("PackedPresets: %#v\n", packedPresets)
+	return
 }
 
 func readScales(f *excelize.File) (err error) {
@@ -150,7 +147,7 @@ func useScale(name string) (packedIndex int, err error) {
 	if !ok {
 		err = errors.Errorf("Reference to unknown scale \"%s\"", name)
 	}
-	for idx, packedScale := range(packedScales) {
+	for idx, packedScale := range packedScales {
 		if scale.Name == packedScale.Name {
 			packedIndex = idx
 			return
@@ -192,7 +189,7 @@ func parseRoot(offsetName string) (root int, err error) {
 		sharpflat = -1
 	}
 	octave,_ := strconv.Atoi(valstring[3])
-	root = base + ((octave+2)*12) + sharpflat;
+	root = base + ((octave+2)*12) + sharpflat
 	if root < 0 || root > 127 {
 		err = errors.Errorf("Invalid transpose root %s - must be in range C-2 .. G8", trimmed)
 	}

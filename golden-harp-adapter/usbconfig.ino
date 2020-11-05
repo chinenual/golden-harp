@@ -1,5 +1,5 @@
 void usbconfig_setup() {
-  showVersion();
+//  showVersion();
 }
 
 int showVersion() {

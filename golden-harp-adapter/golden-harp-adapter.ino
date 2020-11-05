@@ -60,14 +60,14 @@ void setup()
 {
 
   Serial.begin(USB_BAUD);
-  Serial.println("# begin setup");
+//  Serial.println("# begin setup");
 
   usbconfig_setup();
   midi_setup();
   harpin_setup();
   config_setup(); 
   
-  Serial.println("# end setup");
+//  Serial.println("# end setup");
 }
 
 void loop()
