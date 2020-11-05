@@ -33,5 +33,16 @@ func main() {
 		os.Exit(1)
 	}
 	log.Printf(" version: %s\n", string(bytes) )
+
+
+	if err := SerialWriteCommand([]byte("{cmd: \"getconfig\"}")); err != nil {
+		log.Printf("ERROR: %v\n", err)
+		os.Exit(1)
+	}
+	if bytes,err = SerialReadResponse(); err != nil {
+		log.Printf("ERROR: %v\n", err)
+		os.Exit(1)
+	}
+	log.Printf(" config: %s\n", string(bytes) )
 	return
 }

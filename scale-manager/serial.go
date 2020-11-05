@@ -41,13 +41,13 @@ func SerialClose() (err error) {
 
 
 func writeLine(bytes []byte) (err error) {
-	fmt.Printf("SEND \"%s\\n\"...\n",string(bytes))
+	fmt.Printf("SEND \"%s\"...\n",string(bytes))
 	if _,err = unbuffered.Write(bytes); err != nil {
 		return
 	}
-	if _,err = unbuffered.Write([]byte{'\n'}); err != nil {
-		return
-	}
+//	if _,err = unbuffered.Write([]byte{'\n'}); err != nil {
+//		return
+//	}
 	return
 }
 

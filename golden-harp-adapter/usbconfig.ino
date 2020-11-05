@@ -57,6 +57,7 @@ void usbconfig_loop() {
 
       } else if (doc[F("cmd")] == F("getconfig")) {
         config_print();
+        Serial.println();
 
       } else if (doc[F("cmd")] == F("setpreset")) {
         setPreset(doc["presetNum"].as<int>(), doc[F("preset")]);
@@ -65,8 +66,7 @@ void usbconfig_loop() {
         setScale(doc[F("scaleNum")].as<int>(), doc[F("intervals")]);
 
       } else {
-        Serial.print(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));
-
+        Serial.println(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));
       }
     } else {
       Serial.print(F("{status: \"ERROR\", msg: \"JSON parse error: "));
