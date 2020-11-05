@@ -2,13 +2,14 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/jacobsa/go-serial/serial"
 	"github.com/pkg/errors"
 	"io"
 	"log"
 )
 
-var stream *bufio.ReadWriter
+var bufreader *bufio.Reader
 var unbuffered io.ReadWriteCloser
 
 func SerialInit(port string, baudRate uint) (err error) {
@@ -27,15 +28,11 @@ func SerialInit(port string, baudRate uint) (err error) {
 		return
 	}
 	rdr := bufio.NewReader(unbuffered)
-	wrtr := bufio.NewWriter(unbuffered)
-    stream = bufio.NewReadWriter(rdr, wrtr)
+    bufreader = bufio.NewReader(rdr)
     return
 }
 
 func SerialClose() (err error) {
-	if err = stream.Flush(); err != nil {
-		return
-	}
 	if err = unbuffered.Close(); err != nil {
 		return
 	}
@@ -44,20 +41,18 @@ func SerialClose() (err error) {
 
 
 func writeLine(bytes []byte) (err error) {
-	if _,err = stream.Write(bytes); err != nil {
+	fmt.Printf("SEND \"%s\\n\"...\n",string(bytes))
+	if _,err = unbuffered.Write(bytes); err != nil {
 		return
 	}
-	if _,err = stream.Write([]byte{'\n'}); err != nil {
-		return
-	}
-	if err = stream.Flush(); err != nil {
+	if _,err = unbuffered.Write([]byte{'\n'}); err != nil {
 		return
 	}
 	return
 }
 
 func readLine() (bytes []byte, err error) {
-	if bytes,err = stream.ReadBytes('\n'); err != nil {
+	if bytes,err = bufreader.ReadBytes('\n'); err != nil {
 		return
 	}
 	return

@@ -1,5 +1,5 @@
 void usbconfig_setup() {
-//  showVersion();
+  //  showVersion();
 }
 
 int showVersion() {
@@ -52,16 +52,16 @@ void usbconfig_loop() {
     DeserializationError err = deserializeJson(doc, Serial);
 
     if (err == DeserializationError::Ok) {
-      if (doc[F("cmd")] == "version") {
+      if (doc[F("cmd")] == F("version")) {
         showVersion();
 
       } else if (doc[F("cmd")] == F("getconfig")) {
         config_print();
 
-      } else if (doc[F("cmd")] == "setpreset") {
+      } else if (doc[F("cmd")] == F("setpreset")) {
         setPreset(doc["presetNum"].as<int>(), doc[F("preset")]);
 
-      } else if (doc[F("cmd")] == "setscale") {
+      } else if (doc[F("cmd")] == F("setscale")) {
         setScale(doc[F("scaleNum")].as<int>(), doc[F("intervals")]);
 
       } else {

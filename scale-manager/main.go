@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -18,7 +19,10 @@ func main() {
 		log.Printf("ERROR: %v\n", err)
 		os.Exit(1)
 	}
-	if err := SerialWriteCommand([]byte("{cmd: \"version\"")); err != nil {
+	// give the Arduino time to initialize (connecting seems to cause an unwanted RESET):
+	time.Sleep(time.Second*5)
+
+	if err := SerialWriteCommand([]byte("{cmd: \"version\"}")); err != nil {
 		log.Printf("ERROR: %v\n", err)
 		os.Exit(1)
 	}
