@@ -3,14 +3,14 @@ void usbconfig_setup() {
 }
 
 int showVersion() {
-  Serial.println(F("{status: \"OK\", version: \"" __DATE__ " " __TIME__ "\"}"));
+  Serial.print(F("{\"status\": \"OK\", \"version\": \"" __DATE__ " " __TIME__ "\"}"));
 }
 
 int setScale(int scaleNum, JsonArray data) {
   if (scaleNum >= MAX_SCALES) {
-    Serial.print(F("{status: \"ERROR\", msg: \"Invalid scaleNum. MAX_SCALES = "));
+    Serial.print(F("{\status\": \"ERROR\", \"msg\": \"Invalid scaleNum. MAX_SCALES = "));
     Serial.print(MAX_SCALES, DEC);
-    Serial.println(F("\"}"));
+    Serial.print(F("\"}"));
     return;
   }
 
@@ -21,14 +21,14 @@ int setScale(int scaleNum, JsonArray data) {
   if (scaleNum >= config.n_scales) {
     config.n_scales = scaleNum + 1;
   }
-  Serial.println(F("{status: \"OK\"}"));
+  Serial.print(F("{\"status\": \"OK\"}"));
 }
 
 int setPreset(int presetNum, JsonObject cfg) {
   if (presetNum >= MAX_PRESETS) {
-    Serial.print(F("{status: \"ERROR\", msg: \"Invalid presetNum. MAX_PRESETS = "));
+    Serial.print(F("{\"status\": \"ERROR\", \"msg\": \"Invalid presetNum. MAX_PRESETS = "));
     Serial.print(MAX_PRESETS, DEC);
-    Serial.println(F("\"}"));
+    Serial.print(F("\"}"));
     return;
   }
   config.presets[presetNum].l_preset.baseNote    = cfg[F("l")][F("base")];
@@ -41,7 +41,7 @@ int setPreset(int presetNum, JsonObject cfg) {
   if (presetNum >= config.n_presets) {
     config.n_presets = presetNum + 1;
   }
-  Serial.println(F("{status: \"OK\"}"));
+  Serial.print(F("{\"status\": \"OK\"}"));
 }
 
 void usbconfig_loop() {
@@ -57,7 +57,6 @@ void usbconfig_loop() {
 
       } else if (doc[F("cmd")] == F("getconfig")) {
         config_print();
-        Serial.println();
 
       } else if (doc[F("cmd")] == F("setpreset")) {
         setPreset(doc["presetNum"].as<int>(), doc[F("preset")]);
@@ -66,16 +65,18 @@ void usbconfig_loop() {
         setScale(doc[F("scaleNum")].as<int>(), doc[F("intervals")]);
 
       } else {
-        Serial.println(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));
+        Serial.print(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));
       }
     } else {
       Serial.print(F("{status: \"ERROR\", msg: \"JSON parse error: "));
       Serial.print(err.c_str());
-      Serial.println(F("\"}"));
+      Serial.print(F("\"}"));
       // flush the input
       while (Serial.available()) {
         Serial.read();
       }
     }
+    // response must be terminated with a newline:
+    Serial.println();
   }
 }
