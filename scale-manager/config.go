@@ -14,7 +14,7 @@ var packedScales []Scale
 var packedPresets []Preset
 
 type Scale struct {
-	Name      string
+	Name      string `json:"-"`
 	Intervals []int `json:"i"`
 }
 
