@@ -30,17 +30,13 @@ func main() {
 	}
 	log.Printf(" version: %s\n", version )
 
-
-	if err = SerialWriteCommand([]byte("{cmd: \"getconfig\"}")); err != nil {
+	var presets []Preset
+	var scales []Scale
+	if presets, scales, err = CmdGetConfig(); err != nil {
 		log.Printf("ERROR: %v\n", err)
 		os.Exit(1)
 	}
-	var bytes []byte
-	if bytes,err = SerialReadResponse(); err != nil {
-		log.Printf("ERROR: %v\n", err)
-		os.Exit(1)
-	}
-	log.Printf(" config: %s\n", string(bytes) )
-
+	log.Printf(" presets: %#v\n", presets )
+	log.Printf(" scales: %#v\n", scales )
 	return
 }

@@ -129,12 +129,12 @@ void scaleInit(byte packed[], int baseNote, int numValues, int scale[]) {
 }
 
 void usePreset(int num) {
-//  Serial.print("# PRESET ");
-//  Serial.print(num, DEC);
-//  Serial.println();
+  //  Serial.print("# PRESET ");
+  //  Serial.print(num, DEC);
+  //  Serial.println();
 
   if (num > config.n_presets) {
-//    Serial.println("#  -> no such preset defined. Ignored.");
+    //    Serial.println("#  -> no such preset defined. Ignored.");
     return;
   }
 
@@ -160,7 +160,7 @@ void config_print() {
 }
 
 void config_printScales() {
-  Serial.print("scales: [");
+  Serial.print("\"scales\": [");
   for (int i = 0; i < config.n_scales; i++) {
     if (i != 0) {
       Serial.print(",");
@@ -173,14 +173,14 @@ void config_printScales() {
 void config_printScale(byte packed[]) {
   int intervals[12];
   int n = unpackScale(packed, intervals);
-  Serial.print("[");
+    Serial.print("{\"i\":[");
   for (int i = 0; i < n; i++) {
     if (i != 0) {
       Serial.print(", ");
     }
     Serial.print(intervals[i]);
   }
-  Serial.print("]");
+  Serial.print("]}");
 }
 
 void config_printPresets() {
@@ -202,7 +202,7 @@ void config_printPreset(struct preset p) {
   Serial.print(p.l_preset.scale);
   Serial.print(", \"chan\": ");
   Serial.print(p.l_preset.midiChannel);
-  Serial.print("} \"r\": {");
+  Serial.print("}, \"r\": {");
   Serial.print("\"base\": ");
   Serial.print(p.r_preset.baseNote);
   Serial.print(", \"scale\": ");

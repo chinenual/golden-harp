@@ -59,10 +59,10 @@ void usbconfig_loop() {
         config_print();
 
       } else if (doc[F("cmd")] == F("setpreset")) {
-        setPreset(doc["presetNum"].as<int>(), doc[F("preset")]);
+        setPreset(doc["n"].as<int>(), doc[F("preset")]);
 
       } else if (doc[F("cmd")] == F("setscale")) {
-        setScale(doc[F("scaleNum")].as<int>(), doc[F("intervals")]);
+        setScale(doc[F("n")].as<int>(), doc[F("i")]);
 
       } else {
         Serial.print(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));

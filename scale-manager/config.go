@@ -15,17 +15,18 @@ var packedPresets []Preset
 
 type Scale struct {
 	Name      string
-	Intervals []int
+	Intervals []int `json:"i"`
 }
 
+type StripPreset struct {
+	Scale   int `json:"scale"` // packed index
+	Base    int `json:"base"`
+	Channel int `json:"chan"`
+}
 type Preset struct {
-	KeyPosition  int
-	LeftScale    int // packed index
-	LeftRoot     int
-	LeftChannel  int
-	RightScale   int // packed index
-	RightRoot    int
-	RightChannel int
+	KeyPosition int         `json:"n"`
+	Left        StripPreset `json:"l"`
+	Right       StripPreset `json:"r"`
 }
 
 func LoadConfig(filename string) (err error) {
@@ -110,27 +111,27 @@ func readPresets(f *excelize.File) (err error) {
 				if strings.TrimSpace(colVals[2]) != "" {
 					var preset Preset
 					preset.KeyPosition = keyPosition
-					if preset.LeftScale, err = useScale(colVals[2]); err != nil {
+					if preset.Left.Scale, err = useScale(colVals[2]); err != nil {
 						return err
 					}
-					if preset.LeftRoot, err = parseRoot(colVals[3]); err != nil {
+					if preset.Left.Base, err = parseRoot(colVals[3]); err != nil {
 						return err
 					}
-					if preset.LeftChannel, err = parseChannel(colVals[4]); err != nil {
+					if preset.Left.Channel, err = parseChannel(colVals[4]); err != nil {
 						return err
 					}
-					if preset.RightScale, err = useScale(colVals[6]); err != nil {
+					if preset.Right.Scale, err = useScale(colVals[6]); err != nil {
 						return err
 					}
-					if preset.RightRoot, err = parseRoot(colVals[7]); err != nil {
+					if preset.Right.Base, err = parseRoot(colVals[7]); err != nil {
 						return err
 					}
 					if len(colVals) > 8 { // channel may be blank and the reader won't include that in the columns
-						if preset.RightChannel, err = parseChannel(colVals[8]); err != nil {
+						if preset.Right.Channel, err = parseChannel(colVals[8]); err != nil {
 							return err
 						}
 					} else {
-						preset.RightChannel = 1
+						preset.Right.Channel = 1
 					}
 					packedPresets = append(packedPresets, preset)
 				}
@@ -154,7 +155,7 @@ func useScale(name string) (packedIndex int, err error) {
 		}
 	}
 	packedScales = append(packedScales, scale)
-    packedIndex = len(packedScales)-1
+	packedIndex = len(packedScales) - 1
 	return
 }
 
@@ -188,8 +189,8 @@ func parseRoot(offsetName string) (root int, err error) {
 	} else if valstring[2] == "b" {
 		sharpflat = -1
 	}
-	octave,_ := strconv.Atoi(valstring[3])
-	root = base + ((octave+2)*12) + sharpflat
+	octave, _ := strconv.Atoi(valstring[3])
+	root = base + ((octave + 2) * 12) + sharpflat
 	if root < 0 || root > 127 {
 		err = errors.Errorf("Invalid transpose root %s - must be in range C-2 .. G8", trimmed)
 	}
