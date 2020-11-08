@@ -28,8 +28,8 @@ func SerialInit(port string, baudRate uint) (err error) {
 		return
 	}
 	rdr := bufio.NewReader(unbuffered)
-    bufreader = bufio.NewReader(rdr)
-    return
+	bufreader = bufio.NewReader(rdr)
+	return
 }
 
 func SerialClose() (err error) {
@@ -39,20 +39,21 @@ func SerialClose() (err error) {
 	return
 }
 
-
 func writeLine(bytes []byte) (err error) {
-	fmt.Printf("SEND \"%s\"...\n",string(bytes))
-	if _,err = unbuffered.Write(bytes); err != nil {
+	if verboseJSON {
+		fmt.Printf("SEND \"%s\"...\n", string(bytes))
+	}
+	if _, err = unbuffered.Write(bytes); err != nil {
 		return
 	}
-//	if _,err = unbuffered.Write([]byte{'\n'}); err != nil {
-//		return
-//	}
+	//	if _,err = unbuffered.Write([]byte{'\n'}); err != nil {
+	//		return
+	//	}
 	return
 }
 
 func readLine() (bytes []byte, err error) {
-	if bytes,err = bufreader.ReadBytes('\n'); err != nil {
+	if bytes, err = bufreader.ReadBytes('\n'); err != nil {
 		return
 	}
 	return

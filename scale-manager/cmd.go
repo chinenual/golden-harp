@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+const verboseJSON = true
+
 func CmdVersion() (version string, err error) {
 	if err = SerialWriteCommand([]byte("{cmd: \"version\"}")); err != nil {
 		return
@@ -14,8 +16,9 @@ func CmdVersion() (version string, err error) {
 	if bytes, err = SerialReadResponse(); err != nil {
 		return
 	}
-	log.Printf(" version json: %s\n", string(bytes))
-
+	if verboseJSON {
+		log.Printf("DEBUG: version json: %s\n", string(bytes[:len(bytes)-2]))
+	}
 	var data map[string]interface{}
 
 	if err = json.Unmarshal([]byte(bytes), &data); err != nil {
@@ -35,10 +38,11 @@ func CmdGetConfig() (presets []Preset, scales []Scale, err error) {
 	var bytes []byte
 	if bytes, err = SerialReadResponse(); err != nil {
 		log.Printf("ERROR: %v\n", err)
-		os.Exit(1)
+		return
 	}
-	log.Printf(" config json: %s\n", string(bytes))
-
+	if verboseJSON {
+		log.Printf("DEBUG: config json: %s\n", string(bytes[:len(bytes)-2]))
+	}
 	var config struct {
 		Scales  []Scale
 		Presets []Preset
@@ -49,5 +53,54 @@ func CmdGetConfig() (presets []Preset, scales []Scale, err error) {
 
 	presets = config.Presets
 	scales = config.Scales
+	return
+}
+
+func CmdSetScale(index int, scale Scale) (err error) {
+	val := struct {
+		Cmd       string `json:"cmd"`
+		N         int    `json:"n"`
+		Intervals []int  `json:"i"`
+	}{
+		Cmd:       "setscale",
+		N:         index,
+		Intervals: scale.Intervals,
+	}
+	var bytes []byte
+	if bytes, err = json.Marshal(val); err != nil {
+		return
+	}
+	SerialWriteCommand(bytes)
+	if bytes, err = SerialReadResponse(); err != nil {
+		log.Printf("ERROR: %v\n", err)
+		return
+	}
+	if verboseJSON {
+		log.Printf("DEBUG: scale response json: %s\n", string(bytes[:len(bytes)-2]))
+	}
+	return
+}
+
+func CmdSetPreset(preset Preset) (err error) {
+	val := struct {
+		Cmd    string `json:"cmd"`
+		Preset Preset `json:"preset"`
+	}{
+		Cmd:    "setpreset",
+		Preset: preset,
+	}
+
+	var bytes []byte
+	if bytes, err = json.Marshal(val); err != nil {
+		return
+	}
+	SerialWriteCommand(bytes)
+	if bytes, err = SerialReadResponse(); err != nil {
+		log.Printf("ERROR: %v\n", err)
+		return
+	}
+	if verboseJSON {
+		log.Printf("DEBUG: preset response json: %s\n", string(bytes[:len(bytes)-2]))
+	}
 	return
 }
