@@ -12,6 +12,10 @@ import (
 var bufreader *bufio.Reader
 var unbuffered io.ReadWriteCloser
 
+func SerialConnected() bool {
+	return bufreader != nil
+}
+
 func SerialInit(port string, baudRate uint) (err error) {
 	options := serial.OpenOptions{
 		PortName:              port,
@@ -36,6 +40,7 @@ func SerialClose() (err error) {
 	if err = unbuffered.Close(); err != nil {
 		return
 	}
+	bufreader = nil
 	return
 }
 
