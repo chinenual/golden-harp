@@ -227,7 +227,7 @@ void harpin_setup() {
 
 void addKey(int key) {
 #if DEBUG_INPUT
-  Serial.print("# saw "); Serial.print(key, DEC); Serial.println();
+//  Serial.print("# saw "); Serial.print(key, DEC); Serial.println();
 #endif
   keyScan[key] = true;
 }
@@ -322,7 +322,8 @@ void harpin_loop() {
     for (int j = 0; j < 8; j++)
     {
       hardwareBytes[i] <<= 1;
-      hardwareBytes[i] |= KBD_READ_PIN_REGISTER & 0x01;
+//      hardwareBytes[i] |= ((KBD_READ_PIN_REGISTER >> KBD_READ_PIN_SHIFT) & 0x1);
+      hardwareBytes[i] |= digitalRead(KBD_READ_PIN);
       digitalWrite(KBD_CLOCK_PIN, 0);
       digitalWrite(KBD_CLOCK_PIN, 1);
     }
