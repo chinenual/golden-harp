@@ -15,7 +15,7 @@ var packedPresets []Preset
 
 type Scale struct {
 	Name      string `json:"-"`
-	Intervals []int `json:"i"`
+	Intervals []int  `json:"i"`
 }
 
 type StripPreset struct {
@@ -24,7 +24,7 @@ type StripPreset struct {
 	Channel int `json:"chan"`
 }
 type Preset struct {
-	KeyPosition int         `json:"n"`
+	KeyPosition int         `json:"key"`
 	Left        StripPreset `json:"l"`
 	Right       StripPreset `json:"r"`
 }

@@ -215,8 +215,8 @@ void config_printPresets() {
 }
 
 void config_printPreset(int n, struct preset p) {
-  Serial.print("{\"n\": ");
-  Serial.print(n);
+  Serial.print("{\"key\": ");
+  Serial.print(p.key);
   Serial.print(",\"l\": {");
   Serial.print("\"base\": ");
   Serial.print(p.l_preset.baseNote);

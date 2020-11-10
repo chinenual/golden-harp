@@ -31,6 +31,7 @@ int setPreset(int presetNum, JsonObject cfg) {
     Serial.print(F("\"}"));
     return;
   }
+  config.presets[presetNum].key                  = cfg[F("key")];
   config.presets[presetNum].l_preset.baseNote    = cfg[F("l")][F("base")];
   config.presets[presetNum].l_preset.scale       = cfg[F("l")][F("scale")];
   config.presets[presetNum].l_preset.midiChannel = cfg[F("l")][F("chan")];
@@ -59,7 +60,7 @@ void usbconfig_loop() {
         config_print();
 
       } else if (doc[F("cmd")] == F("setpreset")) {
-        setPreset(doc["n"].as<int>(), doc[F("preset")]);
+        setPreset(doc[F("n")].as<int>(), doc[F("preset")]);
 
       } else if (doc[F("cmd")] == F("setscale")) {
         setScale(doc[F("n")].as<int>(), doc[F("i")]);

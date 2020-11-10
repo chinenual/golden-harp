@@ -81,12 +81,14 @@ func CmdSetScale(index int, scale Scale) (err error) {
 	return
 }
 
-func CmdSetPreset(preset Preset) (err error) {
+func CmdSetPreset(index int, preset Preset) (err error) {
 	val := struct {
 		Cmd    string `json:"cmd"`
+		N      int    `json:"n"`
 		Preset Preset `json:"preset"`
 	}{
 		Cmd:    "setpreset",
+		N:      index,
 		Preset: preset,
 	}
 

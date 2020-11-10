@@ -42,8 +42,8 @@ func main() {
 		for i := len(packedScales) - 1; i >= 0; i-- {
 			CmdSetScale(i, packedScales[i])
 		}
-		for _, p := range packedPresets {
-			CmdSetPreset(p)
+		for i := len(packedPresets) - 1; i >= 0; i-- {
+			CmdSetPreset(i, packedPresets[i])
 		}
 	}
 	if *getflag {
