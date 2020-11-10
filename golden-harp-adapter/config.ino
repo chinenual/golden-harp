@@ -9,26 +9,39 @@ struct stripPreset {
   byte midiChannel;
 };
 
-// SIZEOF(preset) == 6 bytes
+// SIZEOF(preset) == 7 bytes
 struct preset {
+  byte key;
   stripPreset l_preset;
   stripPreset r_preset;
 };
 
+// This could be made to be 2 bytes by encodig the scale via bits (one bit per interval), but there's no need to pack 
+// so aggressively with newer hardware.
 // SIZEOF(packedScaleDefinition) == 6 bytes
 typedef byte packedScaleDefinition[6];
 
-// so if we map all keys to trigger presets tthere are 37 presets. If each has two distict scales, we need 2*37 scales
-// so 666 bytes.  Wont fit in 512byte EEPROM.  So we'll go with max of 48 scales to fit.
-//    6 * 37 = 222 bytes for presets
-//    6 * 48 = 288 bytes for packed scale definitions
-//             510 bytes total
+// Each arduino has a different amount of EEPROM.   
+//    The Duemilanove based prototype Don sent Iasos has 512 or 1024 bytes, depending on which variant.
+//    My Uno dev system has 1024 bytes
+//    The Nano that we'll be using for the production build has 1024 bytes
+//
+// so if we map all keys to trigger presets there are 37 presets. If each has two distict scales, we need 2*37 scales
+// so 666 bytes.  Wont fit in 512byte EEPROM.  So we'd have to go with max of 48 scales to fit.
+//
+// the Nano has 1K of eeprom, so we can fit more scales:
+//    7 * 37 = 259 bytes for presets
+//    6 * 74 = 444 bytes for packed scale definitions
+//             703 bytes total
+// plenty of the EEPROM free for other config if we need it.
+
 #define CONFIG_IN_EEPROM 0
 #if CONFIG_IN_EEPROM
 #define MAX_PRESETS 37
-#define MAX_SCALES  48
+#define MAX_SCALES  74
 #else
-// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes needed in order to have enough free RAM
+// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes 
+// needed in order to have enough free RAM
 #define MAX_PRESETS 10
 #define MAX_SCALES  10
 #endif
@@ -128,25 +141,32 @@ void scaleInit(byte packed[], int baseNote, int numValues, int scale[]) {
   //Serial.println();
 }
 
-void usePreset(int num) {
+void usePreset(byte key) {
   //  Serial.print("# PRESET ");
   //  Serial.print(num, DEC);
   //  Serial.println();
 
-  if (num > config.n_presets) {
+  int num = -1;
+  for (int i = 0; i < config.n_presets; i++) {
+    if (config.presets[i].key == key) {
+      num = i;
+      break;
+    }
+  }
+  if (num < 0) {
     //    Serial.println("#  -> no such preset defined. Ignored.");
     return;
   }
 
   scaleInit(config.packedScaleDefs[config.presets[num].r_preset.scale],
             config.presets[num].r_preset.baseNote,
-            MAX_R_STRIP - MIN_R_STRIP,
+            MAX_R_STRIP - MIN_R_STRIP + 1,
             r_scale);
   r_channel = config.presets[num].r_preset.midiChannel;
 
   scaleInit(config.packedScaleDefs[config.presets[num].l_preset.scale],
             config.presets[num].l_preset.baseNote,
-            MAX_L_STRIP - MIN_L_STRIP,
+            MAX_L_STRIP - MIN_L_STRIP + 1,
             l_scale);
   r_channel = config.presets[num].l_preset.midiChannel;
 }
@@ -189,13 +209,15 @@ void config_printPresets() {
     if (i != 0) {
       Serial.print(", ");
     }
-    config_printPreset(config.presets[i]);
+    config_printPreset(i,config.presets[i]);
   }
   Serial.print("]");
 }
 
-void config_printPreset(struct preset p) {
-  Serial.print("{\"l\": {");
+void config_printPreset(int n, struct preset p) {
+  Serial.print("{\"n\": ");
+  Serial.print(n);
+  Serial.print(",\"l\": {");
   Serial.print("\"base\": ");
   Serial.print(p.l_preset.baseNote);
   Serial.print(", \"scale\": ");
