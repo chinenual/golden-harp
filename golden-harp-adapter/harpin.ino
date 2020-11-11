@@ -4,11 +4,11 @@
 
 #define NUM_KEYS 128
 
-boolean keyState[NUM_KEYS]; // we've sent an ON event for this key
-boolean keyScan[NUM_KEYS];  // this key was depressed on the current scan
+boolean key_state[NUM_KEYS]; // we've sent an ON event for this key
+boolean key_scan[NUM_KEYS];  // this key was depressed on the current scan
 
 
-int hardwareToKeyTable[NUM_KEYS] = {
+int hardware_to_key_table[NUM_KEYS] = {
   /// // key [byte-index, bit]
 
   -1, //  0 [0, 0] // keystrips
@@ -220,19 +220,19 @@ void harpin_setup() {
   digitalWrite(KBD_CLOCK_PIN, 1);
 
   for (int i = 0; i < NUM_KEYS; i++) {
-    keyState[i] = false;
+    key_state[i] = false;
   }
 }
 
 
-void addKey(int key) {
+void add_key(int key) {
 #if DEBUG_INPUT
 //  Serial.print("# saw "); Serial.print(key, DEC); Serial.println();
 #endif
-  keyScan[key] = true;
+  key_scan[key] = true;
 }
 
-int keyToChannel(int key) {
+int key_to_channel(int key) {
   if (key >= MIN_R_STRIP && key <= MAX_R_STRIP) {
     return r_channel;
   } else {
@@ -240,33 +240,33 @@ int keyToChannel(int key) {
   }
 }
 
-int keyOut(int key) {
+int key_out(int key) {
   int notePlaying = 0;
-  if (keyScan[key] && keyState[key]) {
+  if (key_scan[key] && key_state[key]) {
     // already sent - key still depressed
     notePlaying = 1;
-  } else if (keyScan[key]) {
+  } else if (key_scan[key]) {
     // detected "key down"
-    keyState[key] = true;
+    key_state[key] = true;
     if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
-      usePreset(key - MIN_MUSIC_KEYBOARD);
+      use_preset(key - MIN_MUSIC_KEYBOARD);
     } else {
-      midiNoteOn(scaleNote(key), keyToChannel(key));
+      midi_note_on(scale_note(key), key_to_channel(key));
       notePlaying = 1;
     }
-  } else if (keyState[key]) {
+  } else if (key_state[key]) {
     // no longer "down" - so detected "key up"
-    keyState[key] = false;
+    key_state[key] = false;
     if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
       // nop
     } else {
-      midiNoteOff(scaleNote(key), keyToChannel(key));
+      midi_note_off(scale_note(key), key_to_channel(key));
     }
   }
   return notePlaying;
 }
 
-int scaleNote(int key) {
+int scale_note(int key) {
   if (key >= MIN_R_STRIP && key <= MAX_R_STRIP) {
 #if DEBUG_INPUT
     Serial.print("# saw R "); Serial.print(key, DEC); Serial.print(" -> "); Serial.println(r_scale[key - MIN_R_STRIP], DEC);
@@ -281,7 +281,7 @@ int scaleNote(int key) {
 }
 
 
-void convertHardwareByteToStripKey(byte hardwareByte, int index) {
+void convert_hardware_byte_to_strip_key(byte hardwareByte, int index) {
   // for each non-zero but in the hardware byte add "key" value indexed by
   //     index * 8 + bit
   if (hardwareByte != 0) {
@@ -289,66 +289,66 @@ void convertHardwareByteToStripKey(byte hardwareByte, int index) {
     for (int count = 0; count < 8; count++) {
       if (hardwareByte & (1 << count)) {
         int lookupIndex = index * 8 + count;
-        addKey(hardwareToKeyTable[lookupIndex]);
+        add_key(hardware_to_key_table[lookupIndex]);
       }
     }
   }
 }
 
-void getScannedKeys(volatile byte hardwareData[]) {
+void get_scanned_keys(volatile byte hardwareData[]) {
   // "strip" values are in the 0, 9..16 indexes:
   // "musical keyboard" values are in the 1..8 indexes
   for (int i = 0; i < 16; i++) {
-    convertHardwareByteToStripKey(hardwareData[i], i);
+    convert_hardware_byte_to_strip_key(hardwareData[i], i);
   }
 }
 
 void harpin_loop() {
   for (int i = 0; i < NUM_KEYS; i++) {
-    keyScan[i] = false;
+    key_scan[i] = false;
   }
 
   digitalWrite(KBD_LATCH_PIN, 1);
   digitalWrite(KBD_LATCH_PIN, 0);
 
-  int hasData = 0;
+  int has_data = 0;
 
   // Read 16 bytes off of the serial port.
-  volatile byte hardwareBytes[16];
+  volatile byte hardware_bytes[16];
   for (int i = 0; i < 16; i++)
   {
     // Read 8 individual bits and pack them into a single byte.
-    hardwareBytes[i] = 0;
+    hardware_bytes[i] = 0;
     for (int j = 0; j < 8; j++)
     {
-      hardwareBytes[i] <<= 1;
-//      hardwareBytes[i] |= ((KBD_READ_PIN_REGISTER >> KBD_READ_PIN_SHIFT) & 0x1);
-      hardwareBytes[i] |= digitalRead(KBD_READ_PIN);
+      hardware_bytes[i] <<= 1;
+//      hardware_bytes[i] |= ((KBD_READ_PIN_REGISTER >> KBD_READ_PIN_SHIFT) & 0x1);
+      hardware_bytes[i] |= digitalRead(KBD_READ_PIN);
       digitalWrite(KBD_CLOCK_PIN, 0);
       digitalWrite(KBD_CLOCK_PIN, 1);
     }
 #if DEBUG_INPUT
-    hasData += hardwareBytes[i] != 0;
+    has_data += hardware_bytes[i] != 0;
 #endif
   }
 #if DEBUG_INPUT
-  if (hasData) {
+  if (has_data) {
     Serial.print("#");
     for (int i = 0; i < 16; i++)
     {
-      Serial.print(hardwareBytes[i], DEC);
+      Serial.print(hardware_bytes[i], DEC);
       Serial.print(':');
     }
 
     Serial.print('\n');
   }
 #endif
-  getScannedKeys(hardwareBytes);
-  int notesPlaying = 0;
+  get_scanned_keys(hardware_bytes);
+  int notes_playing = 0;
   for (int i = 0; i < NUM_KEYS; i++) {
-    notesPlaying += keyOut(i);
+    notes_playing += key_out(i);
   }
-  if (notesPlaying > 0) {
+  if (notes_playing > 0) {
     digitalWrite(NOTE_ON_LED_PIN, 1);
   } else {
     digitalWrite(NOTE_ON_LED_PIN, 0);

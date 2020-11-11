@@ -15,7 +15,11 @@
 #define DEBUG_INPUT 0
 #define VERBOSE_MIDI 0
 
+#include <stddef.h> // for offsetof
 #include <ArduinoJson.h>
+
+#include <EEPROM.h>
+
 
 
 

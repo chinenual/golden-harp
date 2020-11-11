@@ -2,18 +2,18 @@
 #include <SendOnlySoftwareSerial.h>
 
 
-SendOnlySoftwareSerial midiSerialOut(MIDI_TX_PIN);
+SendOnlySoftwareSerial midi_serial_out(MIDI_TX_PIN);
 
 void midi_setup() {
   pinMode(MIDI_TX_PIN, OUTPUT);
-  midiSerialOut.begin(MIDI_BAUD);
+  midi_serial_out.begin(MIDI_BAUD);
 }
 
-void midiNoteOn(int note, int channel) {
+void midi_note_on(int note, int channel) {
   int opcode = 0x90 | channel;
-  midiSerialOut.write(opcode);
-  midiSerialOut.write(note);
-  midiSerialOut.write(MIDI_VELOCITY);
+  midi_serial_out.write(opcode);
+  midi_serial_out.write(note);
+  midi_serial_out.write(MIDI_VELOCITY);
 
 #if VERBOSE_MIDI
   Serial.print("# MIDI note on: ");
@@ -26,11 +26,11 @@ void midiNoteOn(int note, int channel) {
 #endif
 }
 
-void midiNoteOff(int note, int channel) {
+void midi_note_off(int note, int channel) {
   int opcode = 0x80 | channel;
-  midiSerialOut.write(opcode);
-  midiSerialOut.write(note);
-  midiSerialOut.write((int)0);
+  midi_serial_out.write(opcode);
+  midi_serial_out.write(note);
+  midi_serial_out.write((int)0);
 
 #if VERBOSE_MIDI
   Serial.print("# MIDI note off: ");

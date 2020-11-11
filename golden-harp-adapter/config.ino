@@ -3,152 +3,160 @@ int l_channel; // MIDI channel for right strip
 int r_scale[MAX_R_STRIP - MIN_R_STRIP + 1]; // scaling offsets for the right strip
 int l_scale[MAX_L_STRIP - MIN_L_STRIP + 1]; // scaling offsets for the left strip
 
-struct stripPreset {
-  byte baseNote;
+typedef struct strip_preset_s {
+  byte base_note;
   byte scale;
-  byte midiChannel;
-};
+  byte midi_channel;
+} strip_preset_t;
 
 // SIZEOF(preset) == 7 bytes
-struct preset {
+typedef struct preset_s {
   byte key;
-  stripPreset l_preset;
-  stripPreset r_preset;
+  strip_preset_t l_preset;
+  strip_preset_t r_preset;
+} preset_t;
+
+// Encode  the scale via bits (one bit per interval)
+// SIZEOF(packed_scale_definition_u) == 2 bytes
+typedef union packed_scale_definition_u {
+  unsigned int word;
+  struct {
+    byte upper;
+    byte lower;
+  };
 };
 
-// This could be made to be 2 bytes by encodig the scale via bits (one bit per interval), but there's no need to pack 
-// so aggressively with newer hardware.
-// SIZEOF(packedScaleDefinition) == 6 bytes
-typedef byte packedScaleDefinition[6];
-
-// Each arduino has a different amount of EEPROM.   
+// Each arduino has a different amount of EEPROM.
 //    The Duemilanove based prototype Don sent Iasos has 512 or 1024 bytes, depending on which variant.
 //    My Uno dev system has 1024 bytes
 //    The Nano that we'll be using for the production build has 1024 bytes
-//
-// so if we map all keys to trigger presets there are 37 presets. If each has two distict scales, we need 2*37 scales
-// so 666 bytes.  Wont fit in 512byte EEPROM.  So we'd have to go with max of 48 scales to fit.
-//
-// the Nano has 1K of eeprom, so we can fit more scales:
-//    7 * 37 = 259 bytes for presets
-//    6 * 74 = 444 bytes for packed scale definitions
-//             703 bytes total
+// 
+//    7 * 37 = 259 bytes for presets (one per key on the musical keyboard)
+//    2 * 74 = 148 bytes for packed scale definitions (worst case a distinct scale for each strip in each preset)
+//             407 bytes total
 // plenty of the EEPROM free for other config if we need it.
 
 #define CONFIG_IN_EEPROM 0
 #if CONFIG_IN_EEPROM
-#define MAX_PRESETS 37
-#define MAX_SCALES  74
+#  define MAX_PRESETS 37
+#  define MAX_SCALES  74
+
+// Use EEPROM.update to try to minimize the absolute number of writes to the EEPROM (which is limited to 100,000 cycles)
+#  define config_write_byte(offset_expression, val) EEPROM.update(offsetof(offset_expression),val)
+#  define config_read_byte(offset_expression, val) EEPROM.get(offsetof(offset_expression),val)
+
 #else
-// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes 
+// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes
 // needed in order to have enough free RAM
-#define MAX_PRESETS 10
-#define MAX_SCALES  10
+#  define MAX_PRESETS 10
+#  define MAX_SCALES  10
+
+#  define config_read_byte(tgt, offset_expression) tgt = config.offset_expression
+#  define config_write_byte(offset_expression, val) config.offset_expression = (val)
+
 #endif
+
 
 struct {
   byte n_scales;
   byte n_presets;
-  preset presets[MAX_PRESETS];
-  packedScaleDefinition packedScaleDefs[MAX_SCALES];
+  preset_t presets[MAX_PRESETS];
+  packed_scale_definition_u packed_scale_defs[MAX_SCALES];
 } config;
 
 void config_setup() {
+
+#if !CONFIG_IN_EEPROM
+  // If config in EEPROM, don't configure defaults -- trust what's in the EEPROM. (NOTE the very first time the arduino runs with
+  // EEPROM enabled, the config will be uninitialized and may contain garbage values.
+
   //default to two presets - 1: major triad, 2: minor triad
 
-  config.n_scales = 2;
-  config.n_presets = 2;
+  config_write_byte(n_scales,  2);
+  config_write_byte(n_presets, 2);
 
   // chromatic
   int intervals0[] = {0, 1, 2, 3, 4, 5, 6, 7};
-  packScale(8, intervals0, config.packedScaleDefs[0]);
+  pack_scale(8, intervals0, 0);
   // "pipes of pan - IV"
   int intervals1[] = {0, 2, 4, 7, 10, 11};
-  packScale(6, intervals1, config.packedScaleDefs[1]);
+  pack_scale(6, intervals1, 1);
 
   // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
-  config.presets[0].l_preset.baseNote = MIDI_C4 - 24 + 12;
-  config.presets[0].l_preset.scale = 0;
-  config.presets[0].l_preset.midiChannel = 0; // "All"
-  config.presets[0].r_preset.baseNote = MIDI_C4 - 24;
-  config.presets[0].r_preset.scale = 0;
-  config.presets[0].r_preset.midiChannel = 0; // "All"
+  config_write_byte(presets[0].key, 0);
+  config_write_byte(presets[0].l_preset.base_note, MIDI_C4 - 24 + 12);
+  config_write_byte(presets[0].l_preset.scale, 0);
+  config_write_byte(presets[0].l_preset.midi_channel, 0); // "All"
+  config_write_byte(presets[0].r_preset.base_note, MIDI_C4 - 24);
+  config_write_byte(presets[0].r_preset.scale, 0);
+  config_write_byte(presets[0].r_preset.midi_channel, 0); // "All"
 
   // "Pipes of Pan - IV" scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
-  config.presets[1].l_preset.baseNote = MIDI_C4 - 24 + 12;
-  config.presets[1].l_preset.scale = 1;
-  config.presets[1].l_preset.midiChannel = 0; // "All"
-  config.presets[1].r_preset.baseNote = MIDI_C4 - 24;
-  config.presets[1].r_preset.scale = 1;
-  config.presets[1].r_preset.midiChannel = 0; // "All"
+  config_write_byte(presets[1].key, 1);
+  config_write_byte(presets[1].l_preset.base_note, MIDI_C4 - 24 + 12);
+  config_write_byte(presets[1].l_preset.scale, 1);
+  config_write_byte(presets[1].l_preset.midi_channel, 0); // "All"
+  config_write_byte(presets[1].r_preset.base_note, MIDI_C4 - 24);
+  config_write_byte(presets[1].r_preset.scale, 1);
+  config_write_byte(presets[1].r_preset.midi_channel, 0); // "All"
+#endif
 
-  usePreset(0);
+  use_preset(0);
 }
 
-void packScale(byte numNotes, int intervals[], byte packed[]) {
-  // first nibble of the packed array is a note count
-  // each following nibble is an interval.
-  packed[0] = numNotes;
-  int j = 0;
-  for (int i = 0; i < numNotes; i++) {
-    if (i % 2) {
-      // even
-      packed[j] = intervals[i];
-    } else {
-      // odds go into the upper nibble
-      packed[j] |= (intervals[i] << 4);
-      // next nibble will be in the next packed byte
-      j++;
+void pack_scale(byte num_notes, int intervals[], byte scale_num) {
+  packed_scale_definition_u packed;
+  packed.word = 0;
+  for (int i = 0; i < num_notes; i++) {
+    packed.word |= (0x1 << intervals[i]);
+  }
+  config_write_byte(packed_scale_defs[scale_num].upper, packed.upper);
+  config_write_byte(packed_scale_defs[scale_num].lower, packed.lower);
+}
+
+byte unpack_scale(byte scale_num, int intervals[]) {
+  packed_scale_definition_u packed;
+  config_read_byte(packed.upper, packed_scale_defs[scale_num].upper);
+  config_read_byte(packed.lower, packed_scale_defs[scale_num].lower);
+
+  byte num_notes = 0;
+  for (int i = 0; i < 16; i++) {
+    if (packed.word & (0x1 << i)) {
+      intervals[num_notes] = i;
+      num_notes++;
     }
   }
+  return num_notes;
 }
 
-int unpackScale(byte packed[], int intervals[]) {
-  int numNotes = packed[0] & 0x0f;
-  int j = 0;
-  //Serial.print("UNPACKED ");
-  for (int i = 0; i < numNotes; i++) {
-    if (i % 2) {
-      // even
-      intervals[i] = packed[j] & 0x0f;
-    } else {
-      // odds go into the upper nibble
-      intervals[i] = (packed[j] >> 4) & 0x0f;
-      // next nibble will be in the next packed byte
-      j++;
-    }
-    //Serial.print(" ");Serial.print(intervals[i],DEC);
-  }
-  //Serial.println();
-  return numNotes;
-}
-
-void scaleInit(byte packed[], int baseNote, int numValues, int scale[]) {
-  int scaleOctave[12];
-  int scaleLength = unpackScale(packed, scaleOctave);
+void scale_init(byte scale_num, int base_note, int num_values, int scale[]) {
+  int scale_octave[12];
+  int scale_length = unpack_scale(scale_num, scale_octave);
 
   int j = 0;
-  for (int i = 0; i < numValues; i++) {
-    if (j >= scaleLength) {
+  for (int i = 0; i < num_values; i++) {
+    if (j >= scale_length) {
       // next octave
       j = 0;
-      baseNote += 12;
+      base_note += 12;
     }
-    scale[i] = baseNote + scaleOctave[j];
+    scale[i] = base_note + scale_octave[j];
     j++;
     //Serial.print(" ");Serial.print(scale[i],DEC);
   }
   //Serial.println();
 }
 
-void usePreset(byte key) {
+void use_preset(byte key) {
   //  Serial.print("# PRESET ");
   //  Serial.print(num, DEC);
   //  Serial.println();
 
   int num = -1;
-  for (int i = 0; i < config.n_presets; i++) {
-    if (config.presets[i].key == key) {
+  config_read_byte(byte n_presets, n_presets);
+  for (byte i = 0; i < n_presets; i++) {
+    config_read_byte(byte preset_key, presets[i].key);
+    if (preset_key == key) {
       num = i;
       break;
     }
@@ -157,18 +165,24 @@ void usePreset(byte key) {
     //    Serial.println("#  -> no such preset defined. Ignored.");
     return;
   }
-
-  scaleInit(config.packedScaleDefs[config.presets[num].r_preset.scale],
-            config.presets[num].r_preset.baseNote,
-            MAX_R_STRIP - MIN_R_STRIP + 1,
-            r_scale);
-  r_channel = config.presets[num].r_preset.midiChannel;
-
-  scaleInit(config.packedScaleDefs[config.presets[num].l_preset.scale],
-            config.presets[num].l_preset.baseNote,
-            MAX_L_STRIP - MIN_L_STRIP + 1,
-            l_scale);
-  r_channel = config.presets[num].l_preset.midiChannel;
+  {
+    config_read_byte(byte scale_num, presets[num].r_preset.scale);
+    config_read_byte(byte base_note, presets[num].r_preset.base_note);
+    scale_init(scale_num,
+              base_note,
+              MAX_R_STRIP - MIN_R_STRIP + 1,
+              r_scale);
+    config_read_byte(l_channel, presets[num].l_preset.midi_channel);
+  }
+  {
+    config_read_byte(byte scale_num, presets[num].l_preset.scale);
+    config_read_byte(byte base_note, presets[num].l_preset.base_note);
+    scale_init(scale_num,
+              base_note,
+              MAX_L_STRIP - MIN_L_STRIP + 1,
+              l_scale);
+    config_read_byte(r_channel, presets[num].r_preset.midi_channel);
+  }
 }
 
 void config_print() {
@@ -181,19 +195,21 @@ void config_print() {
 
 void config_printScales() {
   Serial.print("\"scales\": [");
-  for (int i = 0; i < config.n_scales; i++) {
+  config_read_byte(byte n_scales, n_scales);
+  for (byte i = 0; i < n_scales; i++) {
     if (i != 0) {
       Serial.print(",");
     }
-    config_printScale(config.packedScaleDefs[i]);
+    config_printScale(i);
   }
   Serial.print("]");
 }
 
-void config_printScale(byte packed[]) {
+void config_printScale(byte packedIndex) {
   int intervals[12];
-  int n = unpackScale(packed, intervals);
-    Serial.print("{\"i\":[");
+
+  int n = unpack_scale(packedIndex, intervals);
+  Serial.print("{\"i\":[");
   for (int i = 0; i < n; i++) {
     if (i != 0) {
       Serial.print(", ");
@@ -205,31 +221,40 @@ void config_printScale(byte packed[]) {
 
 void config_printPresets() {
   Serial.print("\"presets\": [");
-  for (int i = 0; i < config.n_presets; i++) {
+  config_read_byte(byte n_presets, n_presets);
+  for (byte i = 0; i < n_presets; i++) {
     if (i != 0) {
       Serial.print(", ");
     }
-    config_printPreset(i,config.presets[i]);
+    config_printPreset(i);
   }
   Serial.print("]");
 }
 
-void config_printPreset(int n, struct preset p) {
+void config_printPreset(int preset_index) {
+  byte v;
   Serial.print("{\"key\": ");
-  Serial.print(p.key);
+  config_read_byte(v, presets[preset_index].key);
+  Serial.print(v);
   Serial.print(",\"l\": {");
   Serial.print("\"base\": ");
-  Serial.print(p.l_preset.baseNote);
+  config_read_byte(v, presets[preset_index].l_preset.base_note);
+  Serial.print(v);
   Serial.print(", \"scale\": ");
-  Serial.print(p.l_preset.scale);
+  config_read_byte(v, presets[preset_index].l_preset.scale);
+  Serial.print(v);
   Serial.print(", \"chan\": ");
-  Serial.print(p.l_preset.midiChannel);
+  config_read_byte(v, presets[preset_index].l_preset.midi_channel);
+  Serial.print(v);
   Serial.print("}, \"r\": {");
   Serial.print("\"base\": ");
-  Serial.print(p.r_preset.baseNote);
+  config_read_byte(v, presets[preset_index].r_preset.base_note);
+  Serial.print(v);
   Serial.print(", \"scale\": ");
-  Serial.print(p.r_preset.scale);
+  config_read_byte(v, presets[preset_index].r_preset.scale);
+  Serial.print(v);
   Serial.print(", \"chan\": ");
-  Serial.print(p.r_preset.midiChannel);
+  config_read_byte(v, presets[preset_index].r_preset.midi_channel);
+  Serial.print(v);
   Serial.print("}}");
 }
