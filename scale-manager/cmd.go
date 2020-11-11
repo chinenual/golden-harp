@@ -56,13 +56,15 @@ func CmdGetConfig() (presets []Preset, scales []Scale, err error) {
 	return
 }
 
-func CmdSetScale(index int, scale Scale) (err error) {
+func CmdSetScale(total int, index int, scale Scale) (err error) {
 	val := struct {
 		Cmd       string `json:"cmd"`
+		Total     int    `json:"total_n"`
 		N         int    `json:"n"`
 		Intervals []int  `json:"i"`
 	}{
 		Cmd:       "setscale",
+		Total:     total,
 		N:         index,
 		Intervals: scale.Intervals,
 	}
@@ -81,13 +83,15 @@ func CmdSetScale(index int, scale Scale) (err error) {
 	return
 }
 
-func CmdSetPreset(index int, preset Preset) (err error) {
+func CmdSetPreset(total int, index int, preset Preset) (err error) {
 	val := struct {
 		Cmd    string `json:"cmd"`
+		Total  int    `json:"total_n"`
 		N      int    `json:"n"`
 		Preset Preset `json:"preset"`
 	}{
 		Cmd:    "setpreset",
+		Total:  total,
 		N:      index,
 		Preset: preset,
 	}

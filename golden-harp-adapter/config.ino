@@ -35,34 +35,36 @@ typedef union packed_scale_definition_u {
 //    2 * 74 = 148 bytes for packed scale definitions (worst case a distinct scale for each strip in each preset)
 //             407 bytes total
 // plenty of the EEPROM free for other config if we need it.
+#define MAX_PRESETS 37
+#define MAX_SCALES  74
 
-#define CONFIG_IN_EEPROM 0
+#define CONFIG_IN_EEPROM 1
 #if CONFIG_IN_EEPROM
-#  define MAX_PRESETS 37
-#  define MAX_SCALES  74
 
 // Use EEPROM.update to try to minimize the absolute number of writes to the EEPROM (which is limited to 100,000 cycles)
-#  define config_write_byte(offset_expression, val) EEPROM.update(offsetof(offset_expression),val)
-#  define config_read_byte(offset_expression, val) EEPROM.get(offsetof(offset_expression),val)
+#  define config_write_byte(offset_expression, val) EEPROM.update(&(config_for_offset.offset_expression)-(byte*)&config_for_offset,val)
+#  define config_read_byte(tgt, offset_expression) EEPROM.get(&(config_for_offset.offset_expression)-(byte*)&config_for_offset,tgt)
 
 #else
-// when developing, don't use EEPROM (since it has limited number of write cycles) but reduce number of bytes
-// needed in order to have enough free RAM
-#  define MAX_PRESETS 10
-#  define MAX_SCALES  10
+// when developing, don't use EEPROM (since it has limited number of write cycles) 
 
-#  define config_read_byte(tgt, offset_expression) tgt = config.offset_expression
 #  define config_write_byte(offset_expression, val) config.offset_expression = (val)
+#  define config_read_byte(tgt, offset_expression) tgt = config.offset_expression
 
 #endif
 
-
-struct {
+typedef struct config_s {
   byte n_scales;
   byte n_presets;
   preset_t presets[MAX_PRESETS];
   packed_scale_definition_u packed_scale_defs[MAX_SCALES];
-} config;
+} config_t;
+
+#if CONFIG_IN_EEPROM
+config_t config_for_offset; // unused except as a convenient way to compute the offset to a given byte in the EEPROM
+#else
+config_t config;
+#endif
 
 void config_setup() {
 
@@ -153,9 +155,11 @@ void use_preset(byte key) {
   //  Serial.println();
 
   int num = -1;
-  config_read_byte(byte n_presets, n_presets);
+  byte n_presets;
+  config_read_byte(n_presets, n_presets);
   for (byte i = 0; i < n_presets; i++) {
-    config_read_byte(byte preset_key, presets[i].key);
+    byte preset_key;
+    config_read_byte(preset_key, presets[i].key);
     if (preset_key == key) {
       num = i;
       break;
@@ -166,8 +170,10 @@ void use_preset(byte key) {
     return;
   }
   {
-    config_read_byte(byte scale_num, presets[num].r_preset.scale);
-    config_read_byte(byte base_note, presets[num].r_preset.base_note);
+    byte scale_num;
+    byte base_note;
+    config_read_byte(scale_num, presets[num].r_preset.scale);
+    config_read_byte(base_note, presets[num].r_preset.base_note);
     scale_init(scale_num,
               base_note,
               MAX_R_STRIP - MIN_R_STRIP + 1,
@@ -175,8 +181,10 @@ void use_preset(byte key) {
     config_read_byte(l_channel, presets[num].l_preset.midi_channel);
   }
   {
-    config_read_byte(byte scale_num, presets[num].l_preset.scale);
-    config_read_byte(byte base_note, presets[num].l_preset.base_note);
+    byte scale_num;
+    byte base_note;
+    config_read_byte(scale_num, presets[num].l_preset.scale);
+    config_read_byte(base_note, presets[num].l_preset.base_note);
     scale_init(scale_num,
               base_note,
               MAX_L_STRIP - MIN_L_STRIP + 1,
@@ -195,7 +203,8 @@ void config_print() {
 
 void config_printScales() {
   Serial.print("\"scales\": [");
-  config_read_byte(byte n_scales, n_scales);
+  byte n_scales;
+  config_read_byte(n_scales, n_scales);
   for (byte i = 0; i < n_scales; i++) {
     if (i != 0) {
       Serial.print(",");
@@ -221,7 +230,8 @@ void config_printScale(byte packedIndex) {
 
 void config_printPresets() {
   Serial.print("\"presets\": [");
-  config_read_byte(byte n_presets, n_presets);
+  byte n_presets;
+  config_read_byte(n_presets, n_presets);
   for (byte i = 0; i < n_presets; i++) {
     if (i != 0) {
       Serial.print(", ");

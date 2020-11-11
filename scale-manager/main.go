@@ -62,12 +62,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		// do these in reverse order to reduce writes to EEPROM for "numScales"
-		for i := len(packedScales) - 1; i >= 0; i-- {
-			CmdSetScale(i, packedScales[i])
+		for i, _ := range packedScales {
+			CmdSetScale(len(packedScales), i, packedScales[i])
 		}
-		for i := len(packedPresets) - 1; i >= 0; i-- {
-			CmdSetPreset(i, packedPresets[i])
+		for i, _ := range packedPresets {
+			CmdSetPreset(len(packedPresets), i, packedPresets[i])
 		}
 	}
 	if *getflag {
