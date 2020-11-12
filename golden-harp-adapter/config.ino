@@ -38,7 +38,7 @@ typedef union packed_scale_definition_u {
 #define MAX_PRESETS 37
 #define MAX_SCALES  74
 
-#define CONFIG_IN_EEPROM 1
+#define CONFIG_IN_EEPROM 0
 #if CONFIG_IN_EEPROM
 
 // Use EEPROM.update to try to minimize the absolute number of writes to the EEPROM (which is limited to 100,000 cycles)

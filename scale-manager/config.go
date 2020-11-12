@@ -131,7 +131,7 @@ func readPresets(f *excelize.File) (err error) {
 							return err
 						}
 					} else {
-						preset.Right.Channel = 1
+						preset.Right.Channel = 0
 					}
 					packedPresets = append(packedPresets, preset)
 				}
@@ -197,9 +197,10 @@ func parseRoot(offsetName string) (root int, err error) {
 	return
 }
 
+//string is 1-based, result is 0-based
 func parseChannel(channelString string) (channel int, err error) {
 	if strings.TrimSpace(channelString) == "" {
-		channel = 1
+		channel = 0
 		return
 	}
 	if channel, err = strconv.Atoi(channelString); err != nil {
@@ -208,5 +209,6 @@ func parseChannel(channelString string) (channel int, err error) {
 	if channel < 1 || channel > 16 {
 		err = errors.Errorf("Channel %s out of range - must be 1 .. 16", channelString)
 	}
+	channel = channel - 1
 	return
 }

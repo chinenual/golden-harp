@@ -4,9 +4,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/tadvi/winc/w32"
-
 	"github.com/tadvi/winc"
+	"log"
 )
 
 func btnOnClick(arg *winc.Event) {
@@ -35,6 +34,10 @@ var resourceIds = map[string]uint16{
 	"icon_upload.ico":   19,
 }
 
+var NOTE_NAMES = []string{"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"}
+var INTERVAL_NAMES = []string{"1", "b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7"}
+
+/*
 // same as the winc.NewComboBox except uses CBS_DROPDOWN instead of CBS_DROPDOWNLIST style
 func NewComboBox(parent winc.Controller) *winc.ComboBox {
 	if true {
@@ -106,6 +109,46 @@ func makePresetControl(index int, parent *winc.Panel) {
 	scaleR.InsertItem(2, "Minor")
 
 }
+*/
+
+func scaleString(scale Scale) (result string) {
+	for _, interval := range scale.Intervals {
+		result += "  " + INTERVAL_NAMES[interval]
+	}
+	// Iasos's convention always appends the octave at the end of the scale:
+	result += "  8"
+	return
+}
+
+func drawPresets(list *winc.ListView, presets []Preset, scales []Scale) {
+	list.DeleteAllItems()
+	for i := 0; i < 37; i++ {
+		var preset Preset
+		found := false
+		for _, p := range presets {
+			if p.KeyPosition == i {
+				preset = p
+				found = true
+				break
+			}
+		}
+		presetLabel := fmt.Sprintf("%s%d", NOTE_NAMES[i%12], i/12)
+
+		if found {
+			leftRootLabel := fmt.Sprintf("%s%d", NOTE_NAMES[preset.Left.Base%12], (preset.Left.Base/12)-2)
+			rightRootLabel := fmt.Sprintf("%s%d", NOTE_NAMES[preset.Right.Base%12], (preset.Right.Base/12)-2)
+
+			p1 := &Item{[]string{presetLabel,
+				leftRootLabel, scaleString(scales[preset.Left.Scale]), fmt.Sprintf("%d", preset.Left.Channel+1),
+				rightRootLabel, scaleString(scales[preset.Right.Scale]), fmt.Sprintf("%d", preset.Right.Channel+1)}}
+			list.AddItem(p1)
+
+		} else {
+			p1 := &Item{[]string{presetLabel}}
+			list.AddItem(p1)
+		}
+	}
+}
 
 func WindowsUI() {
 	winc.SetAppIcon(int(resourceIds["icon_app.ico"]))
@@ -138,7 +181,7 @@ func WindowsUI() {
 	// --- Toolbar
 	toolbar := winc.NewToolbar(mainWindow)
 	toolbar.SetImageList(imlistTb)
-	downloadBtn := toolbar.AddButton("Download", 0)
+	downloadBtn := toolbar.AddButton("Connect", 0)
 	uploadBtn := toolbar.AddButton("Upload", 1)
 	//	toolbar.AddSeparator()
 	//	runBtn := toolbar.AddButton("Run Now Fast", 2)
@@ -148,68 +191,138 @@ func WindowsUI() {
 	//		println("runBtn click")
 	//	})
 
+	ls := winc.NewListView(mainWindow)
+	ls.AddColumn("Preset", 60)
+	ls.AddColumn("L Base", 60)
+	ls.AddColumn("L Intervals", 200)
+	ls.AddColumn("L Channel", 60)
+	ls.AddColumn("R Base", 60)
+	ls.AddColumn("R Intervals", 200)
+	ls.AddColumn("R Channel", 60)
+
+	drawPresets(ls, nil, nil)
+
+	/*
+		// --- Tabs
+		tabs := winc.NewTabView(mainWindow)
+		presetsPanel := tabs.AddPanel("Presets")
+		scalesPanel := tabs.AddPanel("Scales")
+
+		channelLabel := winc.NewLabel(presetsPanel)
+		channelLabel.SetPos(800, 10)
+		channelLabel.SetText("MIDI Channel")
+
+		channelControl := NewComboBox(presetsPanel)
+		channelControl.SetPos(880, 10)
+		channelControl.SetSize(40, 10)
+		for i := 0; i < 16; i++ {
+			channelControl.InsertItem(i, fmt.Sprintf("%d", i+1))
+		}
+		channelControl.SetSelectedItem(0)
+		for i := 0; i < 36; i++ {
+			makePresetControl(i, presetsPanel)
+		}
+		//imlist := winc.NewImageList(16, 16)
+		//imlist.AddResIcon(12)
+
+		ls := winc.NewListView(scalesPanel)
+		//ls.SetImageList(imlist)
+		//ls.EnableEditLabels(false)
+		//ls.SetCheckBoxes(true)
+		ls.EnableFullRowSelect(true)
+		//ls.EnableHotTrack(true)
+		ls.EnableEditLabels(true)
+
+		//	ls.EnableSortHeader(true)
+		//	ls.EnableSortAscending(true)
+
+		ls.AddColumn("Name", 120)
+		ls.AddColumn("Intervals", 120)
+		ls.SetPos(10, 180)
+		p1 := &Item{[]string{"Minor Pentatonic", "1 b3 4 5 b7"}}
+		ls.AddItem(p1)
+		p2 := &Item{[]string{"Aeolian", "1 2 b3 4 5 b6 b7"}}
+		ls.AddItem(p2)
+		p3 := &Item{[]string{"Dorian", "1 2 b3 4 5 6 b7"}}
+		ls.AddItem(p3)
+		for i := 0; i < 20; i++ {
+			p4 := &Item{[]string{fmt.Sprintf("Funky Scale %03d", i+1), "???"}}
+			ls.AddItem(p4)
+		}
+
+		// --- Dock
+		dock2 := winc.NewSimpleDock(scalesPanel)
+		dock2.Dock(ls, winc.Fill)
+		tabs.SetCurrent(0)
+	*/
+	dock.Dock(toolbar, winc.Top) // toolbars always dock to the top
+	//dock.Dock(tabs, winc.Top)           // tabs should prefer docking at the top
+	//dock.Dock(tabs.Panels(), winc.Fill) // tab panels dock just below tabs and fill area
+	dock.Dock(ls, winc.Fill)
+
 	downloadBtn.OnClick().Bind(func(e *winc.Event) {
 		println("downloadBtn click")
+		if err := ConnectToArduino(); err != nil {
+			log.Printf("ERROR: could not connect to Arduino: %v\n", err)
+			winc.Errorf(mainWindow, "Error: could not connect to Arduino: %v", err)
+			return
+		}
+
+		if presets, scales, err := CmdGetConfig(); err != nil {
+			log.Printf("ERROR: could not get config from Arduino %v\n", err)
+			winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
+			return
+		} else {
+			log.Printf("presets: %#v\n", presets)
+			log.Printf("scales: %#v\n", scales)
+			drawPresets(ls, presets, scales)
+		}
+		return
 	})
 	uploadBtn.OnClick().Bind(func(e *winc.Event) {
 		println("uploadBtn click")
+		if filePath, ok := winc.ShowOpenFileDlg(mainWindow,
+			"Select Harp Scale/Preset configuration file",
+			"Config files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
+			0, ""); ok {
+			if err := LoadConfig(filePath); err != nil {
+				log.Printf("ERROR: could not load config: %v\n", err)
+				winc.Errorf(mainWindow, "Error: could not load config file: %v", err)
+				return
+			}
+			log.Printf("Loaded %s\n", filePath)
+			if err := ConnectToArduino(); err != nil {
+				log.Printf("ERROR: could not connect to Arduino: %v\n", err)
+				winc.Errorf(mainWindow, "Error: could not connect to Arduino: %v", err)
+				return
+			}
+
+			for i, _ := range packedScales {
+				if err := CmdSetScale(len(packedScales), i, packedScales[i]); err != nil {
+					log.Printf("ERROR: could not get send scale config to Arduino %v\n", err)
+					winc.Errorf(mainWindow, "Error: could not get send scale config to Arduino: %v", err)
+					return
+				}
+			}
+			for i, _ := range packedPresets {
+				if err := CmdSetPreset(len(packedPresets), i, packedPresets[i]); err != nil {
+					log.Printf("ERROR: could not get send preset config to Arduino %v\n", err)
+					winc.Errorf(mainWindow, "Error: could not get send preset config to Arduino: %v", err)
+					return
+				}
+			}
+			if presets, scales, err := CmdGetConfig(); err != nil {
+				log.Printf("ERROR: could not get config from Arduino %v\n", err)
+				winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
+				return
+			} else {
+				log.Printf("presets: %#v\n", presets)
+				log.Printf("scales: %#v\n", scales)
+				drawPresets(ls, presets, scales)
+			}
+
+		}
 	})
-
-	// --- Tabs
-	tabs := winc.NewTabView(mainWindow)
-	presetsPanel := tabs.AddPanel("Presets")
-	scalesPanel := tabs.AddPanel("Scales")
-
-	channelLabel := winc.NewLabel(presetsPanel)
-	channelLabel.SetPos(800, 10)
-	channelLabel.SetText("MIDI Channel")
-
-	channelControl := NewComboBox(presetsPanel)
-	channelControl.SetPos(880, 10)
-	channelControl.SetSize(40, 10)
-	for i := 0; i < 16; i++ {
-		channelControl.InsertItem(i, fmt.Sprintf("%d", i+1))
-	}
-	channelControl.SetSelectedItem(0)
-	for i := 0; i < 36; i++ {
-		makePresetControl(i, presetsPanel)
-	}
-	//imlist := winc.NewImageList(16, 16)
-	//imlist.AddResIcon(12)
-
-	ls := winc.NewListView(scalesPanel)
-	//ls.SetImageList(imlist)
-	//ls.EnableEditLabels(false)
-	//ls.SetCheckBoxes(true)
-	ls.EnableFullRowSelect(true)
-	//ls.EnableHotTrack(true)
-	ls.EnableEditLabels(true)
-
-	//	ls.EnableSortHeader(true)
-	//	ls.EnableSortAscending(true)
-
-	ls.AddColumn("Name", 120)
-	ls.AddColumn("Intervals", 120)
-	ls.SetPos(10, 180)
-	p1 := &Item{[]string{"Minor Pentatonic", "1 b3 4 5 b7"}}
-	ls.AddItem(p1)
-	p2 := &Item{[]string{"Aeolian", "1 2 b3 4 5 b6 b7"}}
-	ls.AddItem(p2)
-	p3 := &Item{[]string{"Dorian", "1 2 b3 4 5 6 b7"}}
-	ls.AddItem(p3)
-	for i := 0; i < 20; i++ {
-		p4 := &Item{[]string{fmt.Sprintf("Funky Scale %03d", i+1), "???"}}
-		ls.AddItem(p4)
-	}
-
-	// --- Dock
-	dock2 := winc.NewSimpleDock(scalesPanel)
-	dock2.Dock(ls, winc.Fill)
-	tabs.SetCurrent(0)
-
-	dock.Dock(toolbar, winc.Top)        // toolbars always dock to the top
-	dock.Dock(tabs, winc.Top)           // tabs should prefer docking at the top
-	dock.Dock(tabs.Panels(), winc.Fill) // tab panels dock just below tabs and fill area
 
 	mainWindow.Center()
 	mainWindow.Show()

@@ -7,20 +7,20 @@ import (
 	"time"
 )
 
+var settingsflag = flag.String("settings", "", "Settings file override")
 var versionflag = flag.Bool("getversion", false, "get the Arduino's firmware build date")
 var getflag = flag.Bool("getconfig", false, "get the config from the attached Arduino")
-var setflag = flag.Bool("setconfig", false, "set the config from the attached Arduino")
+var setflag = flag.String("setconfig", "", "set the config to the attached Arduino")
 
 func ConnectToArduino() (err error) {
 	if !SerialConnected() {
 		if err = SerialInit(userSettings.SerialPort, userSettings.SerialBaud); err != nil {
 			log.Printf("ERROR: %v\n", err)
-			os.Exit(1)
+			return
 		}
 		// give the Arduino time to initialize (connecting seems to cause an unwanted RESET):
 		log.Printf("Waiting for arduino to initialize...\n")
 		time.Sleep(time.Second * 5)
-
 	}
 	return
 }
@@ -29,15 +29,10 @@ func main() {
 	flag.Parse()
 
 	var err error
-	if err = LoadSettings(); err != nil {
+	if err = LoadSettings(*settingsflag); err != nil {
 		log.Printf("ERROR: %v\n", err)
 		os.Exit(1)
 	}
-	if err = LoadConfig(getWorkingDirectory() + "/HarpConfig.xlsx"); err != nil {
-		log.Printf("ERROR: %v\n", err)
-		os.Exit(1)
-	}
-
 	ranACommand := false
 
 	if *versionflag {
@@ -55,8 +50,12 @@ func main() {
 		log.Printf("Arduino build date: %s\n", version)
 	}
 
-	if *setflag {
+	if *setflag != "" {
 		ranACommand = true
+		if err = LoadConfig(*setflag); err != nil {
+			log.Printf("ERROR: %v\n", err)
+			os.Exit(1)
+		}
 		if err = ConnectToArduino(); err != nil {
 			log.Printf("ERROR: %v\n", err)
 			os.Exit(1)

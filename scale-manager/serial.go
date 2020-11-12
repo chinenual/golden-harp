@@ -28,7 +28,7 @@ func SerialInit(port string, baudRate uint) (err error) {
 		StopBits:              1,
 	}
 	if unbuffered, err = serial.Open(options); err != nil {
-		err = errors.Wrapf(err, "Could not open serial port")
+		err = errors.Wrapf(err, "Could not open serial port %s", port)
 		return
 	}
 	rdr := bufio.NewReader(unbuffered)

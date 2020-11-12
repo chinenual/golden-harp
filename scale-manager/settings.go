@@ -12,7 +12,7 @@ type Settings struct {
 	SerialBaud uint
 }
 
-var userSettings = Settings {
+var userSettings = Settings{
 	SerialPort: "COM1",
 	SerialBaud: 9600,
 }
@@ -35,8 +35,11 @@ func getWorkingDirectory() (path string) {
 	return
 }
 
-func LoadSettings() (err error) {
+func LoadSettings(path string) (err error) {
 
+	if path != "" {
+		settingsPathname = path
+	}
 	_, err = os.Stat(settingsPathname)
 	if os.IsNotExist(err) {
 		log.Printf("Settings file (%s) does not exist.  Using defaults %#v\n", settingsPathname, userSettings)
