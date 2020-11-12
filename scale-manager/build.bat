@@ -1,2 +1,2 @@
-rsrc -manifest app.manifest -ico=app.ico,add.ico,application_lightning.ico,application_edit.ico,application_error.ico -o rsrc.syso
+rsrc -manifest app.manifest -ico=icon_app.ico,icon_download.ico,icon_upload.ico -o rsrc.syso
 go build -ldflags="-H windowsgui"

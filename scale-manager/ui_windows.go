@@ -28,6 +28,13 @@ func (item Item) Checked() bool            { return false }
 func (item *Item) SetChecked(checked bool) {}
 func (item Item) ImageIndex() int          { return 0 }
 
+var resourceIds = map[string]uint16{
+	"app.manifest":      1,
+	"icon_app.ico":      7,
+	"icon_download.ico": 13,
+	"icon_upload.ico":   19,
+}
+
 // same as the winc.NewComboBox except uses CBS_DROPDOWN instead of CBS_DROPDOWNLIST style
 func NewComboBox(parent winc.Controller) *winc.ComboBox {
 	if true {
@@ -101,11 +108,12 @@ func makePresetControl(index int, parent *winc.Panel) {
 }
 
 func WindowsUI() {
+	winc.SetAppIcon(int(resourceIds["icon_app.ico"]))
 	mainWindow := winc.NewForm(nil)
 	dock := winc.NewSimpleDock(mainWindow)
 
 	mainWindow.SetSize(1000, 800)
-	mainWindow.SetText("Controls Demo")
+	mainWindow.SetText("Golden Harp Manager")
 
 	menu := mainWindow.NewMenu()
 	fileMn := menu.AddSubMenu("File")
@@ -123,14 +131,14 @@ func WindowsUI() {
 		println("cut click")
 	})
 
-	imlistTb := winc.NewImageList(16, 16)
-	imlistTb.AddResIcon(10)
-	imlistTb.AddResIcon(12)
-	imlistTb.AddResIcon(15)
+	imlistTb := winc.NewImageList(24, 24)
+	imlistTb.AddResIcon(resourceIds["icon_download.ico"])
+	imlistTb.AddResIcon(resourceIds["icon_upload.ico"])
 
 	// --- Toolbar
 	toolbar := winc.NewToolbar(mainWindow)
 	toolbar.SetImageList(imlistTb)
+	downloadBtn := toolbar.AddButton("Download", 0)
 	uploadBtn := toolbar.AddButton("Upload", 1)
 	//	toolbar.AddSeparator()
 	//	runBtn := toolbar.AddButton("Run Now Fast", 2)
@@ -140,6 +148,9 @@ func WindowsUI() {
 	//		println("runBtn click")
 	//	})
 
+	downloadBtn.OnClick().Bind(func(e *winc.Event) {
+		println("downloadBtn click")
+	})
 	uploadBtn.OnClick().Bind(func(e *winc.Event) {
 		println("uploadBtn click")
 	})
