@@ -216,8 +216,8 @@ void harpin_setup() {
   pinMode(KBD_READ_PIN, INPUT);
   pinMode(NOTE_ON_LED_PIN, OUTPUT);
 
-  digitalWrite(KBD_LATCH_PIN, 0);
-  digitalWrite(KBD_CLOCK_PIN, 1);
+  digitalWrite(KBD_LATCH_PIN, LOW);
+  digitalWrite(KBD_CLOCK_PIN, HIGH);
 
   for (int i = 0; i < NUM_KEYS; i++) {
     key_state[i] = false;
@@ -308,8 +308,8 @@ void harpin_loop() {
     key_scan[i] = false;
   }
 
-  digitalWrite(KBD_LATCH_PIN, 1);
-  digitalWrite(KBD_LATCH_PIN, 0);
+  digitalWrite(KBD_LATCH_PIN, HIGH);
+  digitalWrite(KBD_LATCH_PIN, LOW);
 
   int has_data = 0;
 
@@ -324,8 +324,8 @@ void harpin_loop() {
       hardware_bytes[i] <<= 1;
 //      hardware_bytes[i] |= ((KBD_READ_PIN_REGISTER >> KBD_READ_PIN_SHIFT) & 0x1);
       hardware_bytes[i] |= digitalRead(KBD_READ_PIN);
-      digitalWrite(KBD_CLOCK_PIN, 0);
-      digitalWrite(KBD_CLOCK_PIN, 1);
+      digitalWrite(KBD_CLOCK_PIN, LOW);
+      digitalWrite(KBD_CLOCK_PIN, HIGH);
     }
 #if DEBUG_INPUT
     has_data += hardware_bytes[i] != 0;
@@ -349,8 +349,8 @@ void harpin_loop() {
     notes_playing += key_out(i);
   }
   if (notes_playing > 0) {
-    digitalWrite(NOTE_ON_LED_PIN, 1);
+    digitalWrite(NOTE_ON_LED_PIN, HIGH);
   } else {
-    digitalWrite(NOTE_ON_LED_PIN, 0);
+    digitalWrite(NOTE_ON_LED_PIN, LOW);
   }
 }

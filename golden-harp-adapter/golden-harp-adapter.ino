@@ -1,18 +1,22 @@
 // pins for Harp Controller Keyboard DIN connector, left to right, back view, tab on top
 // Nano/Stripboard version:
-// 1 = D8 ---D10  (DIN pin 1) LATCH
+// 1 = D8 (DIN pin 1) LATCH
+#define KBD_LATCH_PIN 8
 // 2 = 5V   (DIN pin 4) 5V
 // 3 = GND  (DIN pin 2) GND
-// 4 = D3 --- D5   (DIN pin 5) DATA
-// 5 = D4 --- D4   (DIN pin 3) CLOCK
+// 4 = D3 (DIN pin 5) READ
+#define KBD_READ_PIN 3
+// 5 = D2 (DIN pin 3) CLOCK
+#define KBD_CLOCK_PIN 2
 
 // pins for the MIDI OUT connection, again, left to right, back view, tab on top
 // Nano/Stripboard version:
 // 2 = 5V  (DIN pin 4)  5V (via 220ohm resistor)
 // 3 = GND (DIN pin 2)  GND 
-// 4 = D2 (DIN pin 5)   DATA
+// 4 = D4 (DIN pin 5)   DATA
+#define MIDI_TX_PIN 4
 
-#define DEBUG_INPUT 0
+#define DEBUG_INPUT 1
 #define VERBOSE_MIDI 0
 
 #include <stddef.h> // for offsetof
@@ -32,16 +36,8 @@
 #define MIDI_BAUD 31250
 #define USB_BAUD  9600 // use low baud for the USB port in attempt to reduce interference with real-time MIDI
 
-#define MIDI_TX_PIN 2
 
 #define NOTE_ON_LED_PIN 13
-
-#define KBD_LATCH_PIN 8
-#define KBD_CLOCK_PIN 4
-#define KBD_READ_PIN 3
-// must match the KBD_READ_PIN -- see https://www.arduino.cc/en/Reference/PortManipulation
-#define KBD_READ_PIN_REGISTER PIND
-#define KBD_READ_PIN_SHIFT 3
 
 // time in milliseconds for each scan of the controller; without this, we sometimes see both ON and OFF
 // events within a millisecond of each other. Tune this so that the controller is responsive, but not
