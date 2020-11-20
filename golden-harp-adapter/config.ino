@@ -38,7 +38,6 @@ typedef union packed_scale_definition_u {
 #define MAX_PRESETS 37
 #define MAX_SCALES  74
 
-#define CONFIG_IN_EEPROM 0
 #if CONFIG_IN_EEPROM
 
 // Use EEPROM.update to try to minimize the absolute number of writes to the EEPROM (which is limited to 100,000 cycles)
@@ -86,19 +85,19 @@ void config_setup() {
 
   // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
   config_write_byte(presets[0].key, 0);
-  config_write_byte(presets[0].l_preset.base_note, MIDI_C4 - 24 + 12);
+  config_write_byte(presets[0].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
   config_write_byte(presets[0].l_preset.scale, 0);
   config_write_byte(presets[0].l_preset.midi_channel, 0); // "All"
-  config_write_byte(presets[0].r_preset.base_note, MIDI_C4 - 24);
+  config_write_byte(presets[0].r_preset.base_note, MIDI_MIDDLE_C - 24);
   config_write_byte(presets[0].r_preset.scale, 0);
   config_write_byte(presets[0].r_preset.midi_channel, 0); // "All"
 
   // "Pipes of Pan - IV" scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
   config_write_byte(presets[1].key, 1);
-  config_write_byte(presets[1].l_preset.base_note, MIDI_C4 - 24 + 12);
+  config_write_byte(presets[1].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
   config_write_byte(presets[1].l_preset.scale, 1);
   config_write_byte(presets[1].l_preset.midi_channel, 0); // "All"
-  config_write_byte(presets[1].r_preset.base_note, MIDI_C4 - 24);
+  config_write_byte(presets[1].r_preset.base_note, MIDI_MIDDLE_C - 24);
   config_write_byte(presets[1].r_preset.scale, 1);
   config_write_byte(presets[1].r_preset.midi_channel, 0); // "All"
 #endif

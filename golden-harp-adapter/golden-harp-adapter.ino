@@ -16,7 +16,8 @@
 // 4 = D4 (DIN pin 5)   DATA
 #define MIDI_TX_PIN 4
 
-#define DEBUG_INPUT 1
+#define CONFIG_IN_EEPROM 0
+#define DEBUG_INPUT 0
 #define VERBOSE_MIDI 0
 
 #include <stddef.h> // for offsetof
@@ -25,13 +26,11 @@
 #include <EEPROM.h>
 
 
-
-
 // We assume a simple Arduino (e.g. Uno) with only a single UART TX/RX pair.   We use that connection for the USB connection
 // to the host computer.   We use software serial for both MIDI and the keyboard controller connnection.
 
 // we use EEPROM as non-volatile ram to store preset configuration between reboots
-// my Uno development board supports 1024 bytes of EEPROM
+// my Uno development and the Nano "production" board supports 1024 bytes of EEPROM
 
 #define MIDI_BAUD 31250
 #define USB_BAUD  9600 // use low baud for the USB port in attempt to reduce interference with real-time MIDI
@@ -57,7 +56,7 @@
 #define MIN_MUSIC_KEYBOARD 60   // the leftmost C
 #define MAX_MUSIC_KEYBOARD 96   // the rightmost C
 
-#define MIDI_C4 60 // MIDI note value for middle-C
+#define MIDI_MIDDLE_C 60 // MIDI note value for middle-C
 #define MIDI_VELOCITY 64
 
 void setup()
