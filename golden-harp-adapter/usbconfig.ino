@@ -3,7 +3,7 @@ void usbconfig_setup() {
 }
 
 int show_version() {
-  Serial.print(F("{\"status\": \"OK\", \"version\": \"" __DATE__ " " __TIME__ "\"}"));
+  Serial.print(F("{\"status\": \"OK\", \"version\": \"" VERSION "\", \"timestamp\": \"" __DATE__ " " __TIME__ "\"}"));
 }
 
 int set_scale(byte total_n, byte scale_index, JsonArray data) {

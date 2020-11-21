@@ -28,6 +28,8 @@ func ConnectToArduino() (err error) {
 func main() {
 	flag.Parse()
 
+	log.Printf("Starting version " + Version)
+	
 	var err error
 	if err = LoadSettings(*settingsflag); err != nil {
 		log.Printf("ERROR: %v\n", err)
