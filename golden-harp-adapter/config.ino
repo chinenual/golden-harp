@@ -30,7 +30,7 @@ typedef union packed_scale_definition_u {
 //    The Duemilanove based prototype Don sent Iasos has 512 or 1024 bytes, depending on which variant.
 //    My Uno dev system has 1024 bytes
 //    The Nano that we'll be using for the production build has 1024 bytes
-// 
+//
 //    7 * 37 = 259 bytes for presets (one per key on the musical keyboard)
 //    2 * 74 = 148 bytes for packed scale definitions (worst case a distinct scale for each strip in each preset)
 //             407 bytes total
@@ -45,14 +45,17 @@ typedef union packed_scale_definition_u {
 #  define config_read_byte(tgt, offset_expression) EEPROM.get(&(config_for_offset.offset_expression)-(byte*)&config_for_offset,tgt)
 
 #else
-// when developing, don't use EEPROM (since it has limited number of write cycles) 
+// when developing, don't use EEPROM (since it has limited number of write cycles)
 
 #  define config_write_byte(offset_expression, val) config.offset_expression = (val)
 #  define config_read_byte(tgt, offset_expression) tgt = config.offset_expression
 
 #endif
 
+// we look for 0xAA in the initialized telltale to detect a brand new flashed EEPROM without any config in it
+
 typedef struct config_s {
+  byte initialized;
   byte n_scales;
   byte n_presets;
   preset_t presets[MAX_PRESETS];
@@ -67,40 +70,32 @@ config_t config;
 
 void config_setup() {
 
-#if !CONFIG_IN_EEPROM
-  // If config in EEPROM, don't configure defaults -- trust what's in the EEPROM. (NOTE the very first time the arduino runs with
-  // EEPROM enabled, the config will be uninitialized and may contain garbage values.
+  byte telltale;
+  config_read_byte(telltale, initialized);
+  if ((!CONFIG_IN_EEPROM) || telltale != 0xaa) {
 
-  //default to two presets - 1: major triad, 2: minor triad
+    // If config in EEPROM, don't configure defaults -- trust what's in the EEPROM. (NOTE the very first time the arduino runs with
+    // EEPROM enabled, the config will be uninitialized and may contain garbage values.
 
-  config_write_byte(n_scales,  2);
-  config_write_byte(n_presets, 2);
+    config_write_byte(n_scales,  1);
+    config_write_byte(n_presets, 1);
 
-  // chromatic
-  int intervals0[] = {0, 1, 2, 3, 4, 5, 6, 7};
-  pack_scale(8, intervals0, 0);
-  // "pipes of pan - IV"
-  int intervals1[] = {0, 2, 4, 7, 10, 11};
-  pack_scale(6, intervals1, 1);
+    // chromatic
+    int intervals0[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+    pack_scale(8, intervals0, 0);
 
-  // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
-  config_write_byte(presets[0].key, 0);
-  config_write_byte(presets[0].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
-  config_write_byte(presets[0].l_preset.scale, 0);
-  config_write_byte(presets[0].l_preset.midi_channel, 0); // "All"
-  config_write_byte(presets[0].r_preset.base_note, MIDI_MIDDLE_C - 24);
-  config_write_byte(presets[0].r_preset.scale, 0);
-  config_write_byte(presets[0].r_preset.midi_channel, 0); // "All"
+    // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
+    config_write_byte(presets[0].key, 0);
+    config_write_byte(presets[0].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
+    config_write_byte(presets[0].l_preset.scale, 0);
+    config_write_byte(presets[0].l_preset.midi_channel, 0); // "All"
+    config_write_byte(presets[0].r_preset.base_note, MIDI_MIDDLE_C - 24);
+    config_write_byte(presets[0].r_preset.scale, 0);
+    config_write_byte(presets[0].r_preset.midi_channel, 0); // "All"
 
-  // "Pipes of Pan - IV" scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
-  config_write_byte(presets[1].key, 1);
-  config_write_byte(presets[1].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
-  config_write_byte(presets[1].l_preset.scale, 1);
-  config_write_byte(presets[1].l_preset.midi_channel, 0); // "All"
-  config_write_byte(presets[1].r_preset.base_note, MIDI_MIDDLE_C - 24);
-  config_write_byte(presets[1].r_preset.scale, 1);
-  config_write_byte(presets[1].r_preset.midi_channel, 0); // "All"
-#endif
+  }
+
+  config_write_byte(initialized, 0xaa);
 
   use_preset(0);
 }
@@ -174,9 +169,9 @@ void use_preset(byte key) {
     config_read_byte(scale_num, presets[num].r_preset.scale);
     config_read_byte(base_note, presets[num].r_preset.base_note);
     scale_init(scale_num,
-              base_note,
-              MAX_R_STRIP - MIN_R_STRIP + 1,
-              r_scale);
+               base_note,
+               MAX_R_STRIP - MIN_R_STRIP + 1,
+               r_scale);
     config_read_byte(l_channel, presets[num].l_preset.midi_channel);
   }
   {
@@ -185,9 +180,9 @@ void use_preset(byte key) {
     config_read_byte(scale_num, presets[num].l_preset.scale);
     config_read_byte(base_note, presets[num].l_preset.base_note);
     scale_init(scale_num,
-              base_note,
-              MAX_L_STRIP - MIN_L_STRIP + 1,
-              l_scale);
+               base_note,
+               MAX_L_STRIP - MIN_L_STRIP + 1,
+               l_scale);
     config_read_byte(r_channel, presets[num].r_preset.midi_channel);
   }
 }

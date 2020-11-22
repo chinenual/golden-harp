@@ -16,7 +16,7 @@
 // 4 = D4 (DIN pin 5)   DATA
 #define MIDI_TX_PIN 4
 
-#define CONFIG_IN_EEPROM 0
+#define CONFIG_IN_EEPROM 1
 #define DEBUG_INPUT 0
 #define VERBOSE_MIDI 0
 
