@@ -5,7 +5,7 @@ package main
 import (
 	"fmt"
 	"github.com/tadvi/winc"
-	"log"
+	"os"
 )
 
 func btnOnClick(arg *winc.Event) {
@@ -34,6 +34,8 @@ var resourceIds = map[string]uint16{
 	"icon_upload.ico":   19,
 }
 
+var arduinoStatusLabel *winc.Label
+
 var NOTE_NAMES = []string{"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"}
 var INTERVAL_NAMES = []string{"1", "b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7"}
 
@@ -44,6 +46,24 @@ func scaleString(scale Scale) (result string) {
 	// Iasos's convention always appends the octave at the end of the scale:
 	result += "  8"
 	return
+}
+
+var progressBar *winc.ProgressBar
+
+func openProgressBar(context winc.Controller, max int) {
+	progressBar = winc.NewProgressBar(context)
+	progressBar.SetPos(300, 10)
+	progressBar.SetRange(0, max)
+	progressBar.SetValue(1)
+}
+func updateProgressBar(val int) {
+	progressBar.SetValue(val)
+}
+func closeProgressBar() {
+	if progressBar != nil {
+		progressBar.Close()
+	}
+	progressBar = nil
 }
 
 func drawPresets(list *winc.ListView, presets []Preset, scales []Scale) {
@@ -76,29 +96,90 @@ func drawPresets(list *winc.ListView, presets []Preset, scales []Scale) {
 	}
 }
 
+var statusbar *winc.Panel
+
+func setStatus(status string, version string) {
+	msg := status
+	if version != "" {
+		msg = msg + "; Adapter version: " + version
+	}
+	arduinoStatusLabel.SetText(msg)
+}
+
+func showSettingsDialog(context winc.Controller) {
+	dlg := winc.NewDialog(context)
+	dlg.SetText("Settings")
+	dlg.SetSize(300, 300)
+
+	lbl := winc.NewLabel(dlg)
+	lbl.SetPos(10, 20)
+	lbl.SetText("Serial Port")
+
+	txt := winc.NewEdit(dlg)
+	txt.SetText(userSettings.SerialPort)
+	txt.SetPos(100, 20)
+
+	cancelBtn := winc.NewPushButton(dlg)
+	cancelBtn.SetPos(100, 50)
+	cancelBtn.SetText("Cancel")
+
+	saveBtn := winc.NewPushButton(dlg)
+	saveBtn.SetPos(0, 50)
+	saveBtn.SetText("Save")
+	//	dlg.SetButtons(saveBtn, cancelBtn)
+
+	cancelBtn.OnClick().Bind(func(e *winc.Event) {
+		dlg.Close()
+	})
+
+	saveBtn.OnClick().Bind(func(e *winc.Event) {
+		defer dlg.Close()
+		SerialClose()
+		setStatus("Not connected", "")
+		userSettings.SerialPort = txt.Text()
+		if err := SaveSettings(); err != nil {
+			applog.Printf("ERROR: could not save settings: %v\n", err)
+			winc.Errorf(dlg, "Error: could not save settings: %v", err)
+			return
+		}
+	})
+
+	dlg.Show()
+}
+
+func showAboutDialog(context winc.Controller) {
+	winc.MsgBoxOk(context,
+		"About Golden Harp Manager",
+		"Version "+Version+"\nCopyright 2020 Steve Tynor (steve.tynor@chinenual.com)")
+}
+
 func WindowsUI() {
 	winc.SetAppIcon(int(resourceIds["icon_app.ico"]))
 	mainWindow := winc.NewForm(nil)
 	dock := winc.NewSimpleDock(mainWindow)
 
 	mainWindow.SetSize(1000, 800)
-	mainWindow.SetText("Golden Harp Manager")
+	mainWindow.SetText(AppName)
 
 	menu := mainWindow.NewMenu()
 	fileMn := menu.AddSubMenu("File")
-	fileMn.AddItem("New", winc.NoShortcut)
-	editMn := menu.AddSubMenu("Edit")
-	cutMn := editMn.AddItem("Cut", winc.Shortcut{winc.ModControl, winc.KeyX})
-	copyMn := editMn.AddItem("Copy", winc.NoShortcut)
-	pasteMn := editMn.AddItem("Paste", winc.NoShortcut)
-	menu.Show()
-	copyMn.SetCheckable(true)
-	copyMn.SetChecked(true)
-	pasteMn.SetEnabled(false)
+	settingsMn := fileMn.AddItem("Settings...", winc.NoShortcut)
+	exitMn := fileMn.AddItem("Exit", winc.NoShortcut)
 
-	cutMn.OnClick().Bind(func(e *winc.Event) {
-		println("cut click")
+	helpMn := menu.AddSubMenu("Help")
+	aboutMn := helpMn.AddItem("About Golden Harp Manager", winc.NoShortcut)
+
+	aboutMn.OnClick().Bind(func(e *winc.Event) {
+		showAboutDialog(mainWindow)
 	})
+	settingsMn.OnClick().Bind(func(e *winc.Event) {
+		showSettingsDialog(mainWindow)
+	})
+	exitMn.OnClick().Bind(func(e *winc.Event) {
+		mainWindow.Close()
+		os.Exit(0)
+	})
+	menu.Show()
 
 	imlistTb := winc.NewImageList(24, 24)
 	imlistTb.AddResIcon(resourceIds["icon_download.ico"])
@@ -113,9 +194,17 @@ func WindowsUI() {
 	//	runBtn := toolbar.AddButton("Run Now Fast", 2)
 	toolbar.Show()
 
+	statusbar = winc.NewPanel(mainWindow)
+	statusbar.SetSize(0, 25)
 	//	runBtn.OnClick().Bind(func(e *winc.Event) {
 	//		println("runBtn click")
 	//	})
+
+	arduinoStatusLabel = winc.NewLabel(statusbar)
+	arduinoStatusLabel.SetPos(10, 5)
+	arduinoStatusLabel.SetSize(300, 25)
+
+	setStatus("Not connected", "")
 
 	ls := winc.NewListView(mainWindow)
 	ls.AddColumn("Preset", 60)
@@ -132,22 +221,34 @@ func WindowsUI() {
 	//dock.Dock(tabs, winc.Top)           // tabs should prefer docking at the top
 	//dock.Dock(tabs.Panels(), winc.Fill) // tab panels dock just below tabs and fill area
 	dock.Dock(ls, winc.Fill)
+	dock.Dock(statusbar, winc.Bottom)
 
 	downloadBtn.OnClick().Bind(func(e *winc.Event) {
 		println("downloadBtn click")
+		openProgressBar(mainWindow, 4)
+		defer closeProgressBar()
 		if err := ConnectToArduino(); err != nil {
-			log.Printf("ERROR: could not connect to Arduino: %v\n", err)
+			applog.Printf("ERROR: could not connect to Arduino: %v\n", err)
 			winc.Errorf(mainWindow, "Error: could not connect to Arduino: %v", err)
 			return
 		}
 
+		updateProgressBar(2)
+		if version, _, err := CmdVersion(); err != nil {
+			applog.Printf("ERROR: could not get Arduino version info: %v\n", err)
+			winc.Errorf(mainWindow, "Error: could not get Arduino version info: %v", err)
+		} else {
+			setStatus("Connected", version)
+		}
+
+		updateProgressBar(3)
 		if presets, scales, err := CmdGetConfig(); err != nil {
-			log.Printf("ERROR: could not get config from Arduino %v\n", err)
+			applog.Printf("ERROR: could not get config from Arduino %v\n", err)
 			winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
 			return
 		} else {
-			log.Printf("presets: %#v\n", presets)
-			log.Printf("scales: %#v\n", scales)
+			applog.Printf("presets: %#v\n", presets)
+			applog.Printf("scales: %#v\n", scales)
 			drawPresets(ls, presets, scales)
 		}
 		return
@@ -159,38 +260,52 @@ func WindowsUI() {
 			"Config files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
 			0, ""); ok {
 			if err := LoadConfig(filePath); err != nil {
-				log.Printf("ERROR: could not load config: %v\n", err)
+				applog.Printf("ERROR: could not load config: %v\n", err)
 				winc.Errorf(mainWindow, "Error: could not load config file: %v", err)
 				return
 			}
-			log.Printf("Loaded %s\n", filePath)
+			applog.Printf("Loaded %s\n", filePath)
+
+			openProgressBar(mainWindow, 6)
+			defer closeProgressBar()
 			if err := ConnectToArduino(); err != nil {
-				log.Printf("ERROR: could not connect to Arduino: %v\n", err)
+				applog.Printf("ERROR: could not connect to Arduino: %v\n", err)
 				winc.Errorf(mainWindow, "Error: could not connect to Arduino: %v", err)
 				return
 			}
 
+			updateProgressBar(2)
+			if version, _, err := CmdVersion(); err != nil {
+				applog.Printf("ERROR: could not get Arduino version info: %v\n", err)
+				winc.Errorf(mainWindow, "Error: could not get Arduino version info: %v", err)
+			} else {
+				setStatus("Connected", version)
+			}
+
+			updateProgressBar(3)
 			for i, _ := range packedScales {
 				if err := CmdSetScale(len(packedScales), i, packedScales[i]); err != nil {
-					log.Printf("ERROR: could not get send scale config to Arduino %v\n", err)
+					applog.Printf("ERROR: could not get send scale config to Arduino %v\n", err)
 					winc.Errorf(mainWindow, "Error: could not get send scale config to Arduino: %v", err)
 					return
 				}
 			}
+			updateProgressBar(4)
 			for i, _ := range packedPresets {
 				if err := CmdSetPreset(len(packedPresets), i, packedPresets[i]); err != nil {
-					log.Printf("ERROR: could not get send preset config to Arduino %v\n", err)
+					applog.Printf("ERROR: could not get send preset config to Arduino %v\n", err)
 					winc.Errorf(mainWindow, "Error: could not get send preset config to Arduino: %v", err)
 					return
 				}
 			}
+			updateProgressBar(5)
 			if presets, scales, err := CmdGetConfig(); err != nil {
-				log.Printf("ERROR: could not get config from Arduino %v\n", err)
+				applog.Printf("ERROR: could not get config from Arduino %v\n", err)
 				winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
 				return
 			} else {
-				log.Printf("presets: %#v\n", presets)
-				log.Printf("scales: %#v\n", scales)
+				applog.Printf("presets: %#v\n", presets)
+				applog.Printf("scales: %#v\n", scales)
 				drawPresets(ls, presets, scales)
 			}
 

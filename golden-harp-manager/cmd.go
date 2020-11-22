@@ -2,22 +2,16 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"os"
 )
 
-const verboseJSON = true
-
-func CmdVersion() (version string, err error) {
+func CmdVersion() (version string, timestamp string, err error) {
 	if err = SerialWriteCommand([]byte("{cmd: \"version\"}")); err != nil {
 		return
 	}
 	var bytes []byte
 	if bytes, err = SerialReadResponse(); err != nil {
 		return
-	}
-	if verboseJSON {
-		log.Printf("DEBUG: version json: %s\n", string(bytes[:len(bytes)-2]))
 	}
 	var data map[string]interface{}
 
@@ -26,22 +20,20 @@ func CmdVersion() (version string, err error) {
 	}
 
 	version = data["version"].(string)
+	timestamp = data["timestamp"].(string)
 	return
 }
 
 func CmdGetConfig() (presets []Preset, scales []Scale, err error) {
 
 	if err = SerialWriteCommand([]byte("{cmd: \"getconfig\"}")); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		applog.Printf("ERROR: %v\n", err)
 		os.Exit(1)
 	}
 	var bytes []byte
 	if bytes, err = SerialReadResponse(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		applog.Printf("ERROR: %v\n", err)
 		return
-	}
-	if verboseJSON {
-		log.Printf("DEBUG: config json: %s\n", string(bytes[:len(bytes)-2]))
 	}
 	var config struct {
 		Scales  []Scale
@@ -74,11 +66,8 @@ func CmdSetScale(total int, index int, scale Scale) (err error) {
 	}
 	SerialWriteCommand(bytes)
 	if bytes, err = SerialReadResponse(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		applog.Printf("ERROR: %v\n", err)
 		return
-	}
-	if verboseJSON {
-		log.Printf("DEBUG: scale response json: %s\n", string(bytes[:len(bytes)-2]))
 	}
 	return
 }
@@ -102,11 +91,8 @@ func CmdSetPreset(total int, index int, preset Preset) (err error) {
 	}
 	SerialWriteCommand(bytes)
 	if bytes, err = SerialReadResponse(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		applog.Printf("ERROR: %v\n", err)
 		return
-	}
-	if verboseJSON {
-		log.Printf("DEBUG: preset response json: %s\n", string(bytes[:len(bytes)-2]))
 	}
 	return
 }

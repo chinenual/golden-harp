@@ -7,3 +7,4 @@ go get github.com/gonutz/rsrc
 go get github.com/jacobsa/go-serial/serial
 go get github.com/360EntSecGroup-Skylar/excelize
 go get github.com/pkg/errors
+go get gopkg.in/natefinch/lumberjack.v2

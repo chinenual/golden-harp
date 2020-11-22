@@ -1,0 +1,4 @@
+{
+ "SerialPort": "COM1",
+ "SerialBaud": 9600
+}

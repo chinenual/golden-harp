@@ -2,11 +2,9 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"github.com/jacobsa/go-serial/serial"
 	"github.com/pkg/errors"
 	"io"
-	"log"
 )
 
 var bufreader *bufio.Reader
@@ -21,7 +19,7 @@ func SerialInit(port string, baudRate uint) (err error) {
 		PortName:              port,
 		BaudRate:              baudRate,
 		ParityMode:            serial.PARITY_NONE,
-		RTSCTSFlowControl:     true,
+		RTSCTSFlowControl:     false,
 		InterCharacterTimeout: 500,
 		MinimumReadSize:       1,
 		DataBits:              8,
@@ -37,17 +35,17 @@ func SerialInit(port string, baudRate uint) (err error) {
 }
 
 func SerialClose() (err error) {
-	if err = unbuffered.Close(); err != nil {
-		return
+	if bufreader != nil {
+		if err = unbuffered.Close(); err != nil {
+			return
+		}
+		bufreader = nil
 	}
-	bufreader = nil
 	return
 }
 
 func writeLine(bytes []byte) (err error) {
-	if verboseJSON {
-		fmt.Printf("SEND \"%s\"...\n", string(bytes))
-	}
+	applog.Printf("SEND: \"%s\"...\n", string(bytes))
 	if _, err = unbuffered.Write(bytes); err != nil {
 		return
 	}
@@ -59,6 +57,7 @@ func writeLine(bytes []byte) (err error) {
 
 func readLine() (bytes []byte, err error) {
 	if bytes, err = bufreader.ReadBytes('\n'); err != nil {
+		applog.Println("err")
 		return
 	}
 	return
@@ -76,12 +75,14 @@ func SerialReadResponse() (json []byte, err error) {
 		if json, err = readLine(); err != nil {
 			return
 		}
+
 		// Arduino writes "debug" msgs with a leading #
 		if len(json) > 0 && json[0] != '#' {
+			applog.Printf("READ: \"%s\"", string(json))
 			return
 		}
 		// includes a newline so don't include it on the printf
-		log.Printf("DEBUG: %s", string(json))
+		applog.Printf("DEBUG: \"%s\"", string(json))
 	}
 	return
 }
