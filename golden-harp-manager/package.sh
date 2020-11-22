@@ -1,7 +1,7 @@
 #! /bin/bash
 
 VERSION=`grep Version version.go | sed -e 's/^.* //' -e 's/"//g'`
-tgt=GoldenHarpManger-${VERSION}.msi
+tgt=GoldenHarpManager-${VERSION}.msi
 
 rm -f $tgt
 
