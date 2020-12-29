@@ -41,10 +41,17 @@ int set_preset(byte total_n, byte preset_index, JsonObject cfg) {
   Serial.print(F("{\"status\": \"OK\"}"));
 }
 
-int set_looptime(byte ms) {
-    config_write_byte(loop_time, ms);
+int set_loop_time(byte ms) {
+    config_write_byte(loop_time_ms, ms);
     // we cache the value for quick retrieval in the loop() routine
-    loop_time = ms;
+    loop_time_ms = ms;
+    Serial.print(F("{\"status\": \"OK\"}"));  
+}
+
+int set_max_note_length(byte ms) {
+    config_write_byte(max_note_length_ms, ms);
+    // we cache the value for quick retrieval in the loop() routine
+    max_note_length_ms = ms;
     Serial.print(F("{\"status\": \"OK\"}"));  
 }
 
@@ -70,7 +77,10 @@ void usbconfig_loop() {
         set_scale(doc[F("total_n")].as<int>(), doc[F("n")].as<int>(), doc[F("i")]);
 
       } else if (doc[F("cmd")] == F("setlooptime")) {
-        set_looptime(doc[F("loop_time")].as<int>());
+        set_loop_time(doc[F("ms")].as<int>());
+        
+      } else if (doc[F("cmd")] == F("setmaxnotelen")) {
+        set_loop_time(doc[F("ms")].as<int>());
         
       } else {
         Serial.print(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));

@@ -4,7 +4,7 @@
 
 #define NUM_KEYS 128
 
-boolean key_state[NUM_KEYS]; // we've sent an ON event for this key
+unsigned long key_state[NUM_KEYS]; // non-zero if we've sent an ON event for this key (timestamp of when we detected key-down)
 boolean key_scan[NUM_KEYS];  // this key was depressed on the current scan
 
 
@@ -220,7 +220,7 @@ void harpin_setup() {
   digitalWrite(KBD_CLOCK_PIN, HIGH);
 
   for (int i = 0; i < NUM_KEYS; i++) {
-    key_state[i] = false;
+    key_state[i] = 0L;
   }
 }
 
@@ -240,30 +240,43 @@ int key_to_channel(int key) {
   }
 }
 
-int key_out(int key) {
-  int notePlaying = 0;
-  if (key_scan[key] && key_state[key]) {
+int key_out(int key, unsigned long timestamp) {
+  int note_playing = 0;
+  if (key_scan[key] && (0L != key_state[key])) {
     // already sent - key still depressed
-    notePlaying = 1;
+    // has the ttl expired?
+    unsigned long time_playing = timestamp - key_state[key];
+    if (time_playing > max_note_length_ms) {
+      // auto expire the note
+      key_state[key] = 0L;
+      if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
+        // nop
+      } else {
+         midi_note_off(scale_note(key), key_to_channel(key));
+       }
+        
+    } else {
+      note_playing = 1;
+    }
   } else if (key_scan[key]) {
     // detected "key down"
-    key_state[key] = true;
+    key_state[key] = timestamp;
     if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
       use_preset(key - MIN_MUSIC_KEYBOARD);
     } else {
       midi_note_on(scale_note(key), key_to_channel(key));
-      notePlaying = 1;
+      note_playing = 1;
     }
-  } else if (key_state[key]) {
+  } else if (0L != key_state[key]) {
     // no longer "down" - so detected "key up"
-    key_state[key] = false;
+    key_state[key] = 0L;
     if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
       // nop
     } else {
       midi_note_off(scale_note(key), key_to_channel(key));
     }
   }
-  return notePlaying;
+  return note_playing;
 }
 
 int scale_note(int key) {
@@ -304,6 +317,8 @@ void get_scanned_keys(volatile byte hardwareData[]) {
 }
 
 void harpin_loop() {
+  unsigned long timestamp = millis();
+  
   for (int i = 0; i < NUM_KEYS; i++) {
     key_scan[i] = false;
   }
@@ -346,7 +361,7 @@ void harpin_loop() {
   get_scanned_keys(hardware_bytes);
   int notes_playing = 0;
   for (int i = 0; i < NUM_KEYS; i++) {
-    notes_playing += key_out(i);
+    notes_playing += key_out(i, timestamp);
   }
   if (notes_playing > 0) {
     digitalWrite(NOTE_ON_LED_PIN, HIGH);

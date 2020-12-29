@@ -57,7 +57,8 @@
 #define MIDI_VELOCITY 64
 
 // cached loop_time value so we're not reading EEPROM every time around the loop
-unsigned long loop_time;
+unsigned long loop_time_ms;
+unsigned long max_note_length_ms;
 
 
 void setup()
@@ -82,7 +83,7 @@ void loop()
   harpin_loop();
 
   unsigned long elapsed = millis() - start;
-  if (elapsed < loop_time) {
-    delay(loop_time - elapsed);
+  if (elapsed < loop_time_ms) {
+    delay(loop_time_ms - elapsed);
   }
 }

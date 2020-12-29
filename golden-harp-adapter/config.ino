@@ -65,7 +65,10 @@ typedef struct config_s {
   // time in milliseconds for each scan of the controller; without this, we sometimes see both ON and OFF
   // events within a millisecond of each other. Tune this so that the controller is responsive, but not
   // spewing a lot of overlapping MIDI events
-  byte loop_time;
+  byte loop_time_ms;
+  
+  // time in milliseconds for max amount of time a note can sound
+  byte max_note_length_ms;
 
   // add new config at the end and change the CONFIG_TELLTALE telltale byte
 #define CONFIG_TELLTALE_1_0 0xaa
@@ -109,15 +112,18 @@ void config_setup() {
 
     if (telltale != CONFIG_TELLTALE_1_1) {
       // new config since prior version
-      config_write_byte(loop_time, 20);
+      config_write_byte(loop_time_ms, 20);
     }
   }
 
   config_write_byte(initialized, CONFIG_TELLTALE_CURRENT);
 
   byte v;
-  config_read_byte(v, loop_time);
-  loop_time = v;
+  config_read_byte(v, loop_time_ms);
+  loop_time_ms = v;
+  
+  config_read_byte(v, max_note_length_ms);
+  max_note_length_ms = v;
   
   use_preset(0);
 }
