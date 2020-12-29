@@ -40,11 +40,6 @@
 
 #define NOTE_ON_LED_PIN 13
 
-// time in milliseconds for each scan of the controller; without this, we sometimes see both ON and OFF
-// events within a millisecond of each other. Tune this so that the controller is responsive, but not
-// spewing a lot of overlapping MIDI events
-#define LOOP_TIME 20
-
 // there are three distinct sets of "note" index values - I use the following terms to keep them from being confused:
 //   HARDWARE_BYTE:  the bytes read from the serial connection that represent the raw hardware state of the keyboard
 //   KEY_INDEX:      the index into the logic "strip" position or the musical keyboard
@@ -60,6 +55,10 @@
 
 #define MIDI_MIDDLE_C 60 // MIDI note value for middle-C
 #define MIDI_VELOCITY 64
+
+// cached loop_time value so we're not reading EEPROM every time around the loop
+unsigned long loop_time;
+
 
 void setup()
 {
@@ -83,7 +82,7 @@ void loop()
   harpin_loop();
 
   unsigned long elapsed = millis() - start;
-  if (elapsed < LOOP_TIME) {
-    delay(LOOP_TIME - elapsed);
+  if (elapsed < loop_time) {
+    delay(loop_time - elapsed);
   }
 }

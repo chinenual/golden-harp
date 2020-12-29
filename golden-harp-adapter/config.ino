@@ -1,3 +1,4 @@
+
 int r_channel; // MIDI channel for right strip
 int l_channel; // MIDI channel for right strip
 int r_scale[MAX_R_STRIP - MIN_R_STRIP + 1]; // scaling offsets for the right strip
@@ -52,7 +53,7 @@ typedef union packed_scale_definition_u {
 
 #endif
 
-// we look for 0xAA in the initialized telltale to detect a brand new flashed EEPROM without any config in it
+// we look for CONFIG_TELLTALE in the initialized telltale to detect a brand new flashed EEPROM without any config in it
 
 typedef struct config_s {
   byte initialized;
@@ -60,6 +61,16 @@ typedef struct config_s {
   byte n_presets;
   preset_t presets[MAX_PRESETS];
   packed_scale_definition_u packed_scale_defs[MAX_SCALES];
+
+  // time in milliseconds for each scan of the controller; without this, we sometimes see both ON and OFF
+  // events within a millisecond of each other. Tune this so that the controller is responsive, but not
+  // spewing a lot of overlapping MIDI events
+  byte loop_time;
+
+  // add new config at the end and change the CONFIG_TELLTALE telltale byte
+#define CONFIG_TELLTALE_1_0 0xaa
+#define CONFIG_TELLTALE_1_1 0xab
+#define CONFIG_TELLTALE_CURRENT CONFIG_TELLTALE_1_1
 } config_t;
 
 #if CONFIG_IN_EEPROM
@@ -72,31 +83,42 @@ void config_setup() {
 
   byte telltale;
   config_read_byte(telltale, initialized);
-  if ((!CONFIG_IN_EEPROM) || telltale != 0xaa) {
+  if ((!CONFIG_IN_EEPROM) || (telltale != CONFIG_TELLTALE_CURRENT)) {
+    if (telltale != CONFIG_TELLTALE_1_0 && telltale != CONFIG_TELLTALE_1_1) {
 
-    // If config in EEPROM, don't configure defaults -- trust what's in the EEPROM. (NOTE the very first time the arduino runs with
-    // EEPROM enabled, the config will be uninitialized and may contain garbage values.
+      // If config in EEPROM, don't configure defaults -- trust what's in the EEPROM. (NOTE the very first time the arduino runs with
+      // EEPROM enabled, the config will be uninitialized and may contain garbage values.
 
-    config_write_byte(n_scales,  1);
-    config_write_byte(n_presets, 1);
+      config_write_byte(n_scales,  1);
+      config_write_byte(n_presets, 1);
 
-    // chromatic
-    int intervals0[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
-    pack_scale(8, intervals0, 0);
+      // chromatic
+      int intervals0[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+      pack_scale(8, intervals0, 0);
 
-    // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
-    config_write_byte(presets[0].key, 0);
-    config_write_byte(presets[0].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
-    config_write_byte(presets[0].l_preset.scale, 0);
-    config_write_byte(presets[0].l_preset.midi_channel, 0); // "All"
-    config_write_byte(presets[0].r_preset.base_note, MIDI_MIDDLE_C - 24);
-    config_write_byte(presets[0].r_preset.scale, 0);
-    config_write_byte(presets[0].r_preset.midi_channel, 0); // "All"
+      // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
+      config_write_byte(presets[0].key, 0);
+      config_write_byte(presets[0].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
+      config_write_byte(presets[0].l_preset.scale, 0);
+      config_write_byte(presets[0].l_preset.midi_channel, 0); // "All"
+      config_write_byte(presets[0].r_preset.base_note, MIDI_MIDDLE_C - 24);
+      config_write_byte(presets[0].r_preset.scale, 0);
+      config_write_byte(presets[0].r_preset.midi_channel, 0); // "All"
 
+    }
+
+    if (telltale != CONFIG_TELLTALE_1_1) {
+      // new config since prior version
+      config_write_byte(loop_time, 20);
+    }
   }
 
-  config_write_byte(initialized, 0xaa);
+  config_write_byte(initialized, CONFIG_TELLTALE_CURRENT);
 
+  byte v;
+  config_read_byte(v, loop_time);
+  loop_time = v;
+  
   use_preset(0);
 }
 
