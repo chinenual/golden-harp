@@ -80,7 +80,7 @@ void usbconfig_loop() {
         set_loop_time(doc[F("ms")].as<int>());
         
       } else if (doc[F("cmd")] == F("setmaxnotelen")) {
-        set_loop_time(doc[F("ms")].as<int>());
+        set_max_note_length(doc[F("ms")].as<short>());
         
       } else {
         Serial.print(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));

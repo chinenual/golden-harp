@@ -141,9 +141,11 @@ void config_setup() {
   config_write_byte(initialized, CONFIG_TELLTALE_CURRENT);
 
   // set the cached values for timing related config:
-  config_read_byte(loop_time_ms, loop_time_ms);
+  byte v;
+  config_read_byte(v, loop_time_ms);
+  loop_time_ms = v;
   config_read_uint16(max_note_length_ms, max_note_length_ms);
-  
+
   use_preset(0);
 }
 
@@ -242,6 +244,7 @@ void config_print() {
   Serial.print(", \"maxnotelen\" : ");
   unsigned short i;
   config_read_uint16(i,max_note_length_ms);
+  Serial.print(i);
   Serial.print(", \"looptime\" : ");
   byte v;
   config_read_byte(v,loop_time_ms);
