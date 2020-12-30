@@ -48,8 +48,8 @@ int set_loop_time(byte ms) {
     Serial.print(F("{\"status\": \"OK\"}"));  
 }
 
-int set_max_note_length(byte ms) {
-    config_write_byte(max_note_length_ms, ms);
+int set_max_note_length(unsigned short ms) {
+    config_write_uint16(max_note_length_ms, ms);
     // we cache the value for quick retrieval in the loop() routine
     max_note_length_ms = ms;
     Serial.print(F("{\"status\": \"OK\"}"));  

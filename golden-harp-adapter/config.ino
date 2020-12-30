@@ -27,6 +27,7 @@ typedef union packed_scale_definition_u {
   };
 };
 
+#if CONFIG_IN_EEPROM
 // Each arduino has a different amount of EEPROM.
 //    The Duemilanove based prototype Don sent Iasos has 512 or 1024 bytes, depending on which variant.
 //    My Uno dev system has 1024 bytes
@@ -36,20 +37,40 @@ typedef union packed_scale_definition_u {
 //    2 * 74 = 148 bytes for packed scale definitions (worst case a distinct scale for each strip in each preset)
 //             407 bytes total
 // plenty of the EEPROM free for other config if we need it.
+
 #define MAX_PRESETS 37
 #define MAX_SCALES  74
-
-#if CONFIG_IN_EEPROM
 
 // Use EEPROM.update to try to minimize the absolute number of writes to the EEPROM (which is limited to 100,000 cycles)
 #  define config_write_byte(offset_expression, val) EEPROM.update(&(config_for_offset.offset_expression)-(byte*)&config_for_offset,val)
 #  define config_read_byte(tgt, offset_expression) EEPROM.get(&(config_for_offset.offset_expression)-(byte*)&config_for_offset,tgt)
 
+#  define config_write_uint16(offset_expression,val)\
+{\
+  union { byte b[2]; unsigned short v;} u;  \
+  u.v = val; \
+  EEPROM.update((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset,u.b[0]);\
+  EEPROM.update((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset + 1,u.b[1]);\
+}
+#  define config_read_uint16(tgt,offset_expression)\
+{\
+  union { byte b[2]; unsigned short v;} u;  \
+  EEPROM.get((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset,u.b[0]);\
+  EEPROM.get((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset + 1,u.b[1]);\
+  tgt = u.v;\
+}
+
 #else
+// when developing need a smaller number of presets and scales since everything has to fit in memory
+#define MAX_PRESETS 4
+#define MAX_SCALES  8
+
 // when developing, don't use EEPROM (since it has limited number of write cycles)
 
 #  define config_write_byte(offset_expression, val) config.offset_expression = (val)
 #  define config_read_byte(tgt, offset_expression) tgt = config.offset_expression
+#  define config_write_uint16(offset_expression, val) config.offset_expression = (val)
+#  define config_read_uint16(tgt, offset_expression) tgt = config.offset_expression
 
 #endif
 
@@ -68,7 +89,7 @@ typedef struct config_s {
   byte loop_time_ms;
   
   // time in milliseconds for max amount of time a note can sound
-  byte max_note_length_ms;
+  unsigned short max_note_length_ms;
 
   // add new config at the end and change the CONFIG_TELLTALE telltale byte
 #define CONFIG_TELLTALE_1_0 0xaa
@@ -112,18 +133,16 @@ void config_setup() {
 
     if (telltale != CONFIG_TELLTALE_1_1) {
       // new config since prior version
-      config_write_byte(loop_time_ms, 20);
+      config_write_byte(loop_time_ms, 50);
+      config_write_uint16(max_note_length_ms, 2500);
     }
   }
 
   config_write_byte(initialized, CONFIG_TELLTALE_CURRENT);
 
-  byte v;
-  config_read_byte(v, loop_time_ms);
-  loop_time_ms = v;
-  
-  config_read_byte(v, max_note_length_ms);
-  max_note_length_ms = v;
+  // set the cached values for timing related config:
+  config_read_byte(loop_time_ms, loop_time_ms);
+  config_read_uint16(max_note_length_ms, max_note_length_ms);
   
   use_preset(0);
 }
@@ -220,6 +239,13 @@ void config_print() {
   config_printScales();
   Serial.print(", ");
   config_printPresets();
+  Serial.print(", \"maxnotelen\" : ");
+  unsigned short i;
+  config_read_uint16(i,max_note_length_ms);
+  Serial.print(", \"looptime\" : ");
+  byte v;
+  config_read_byte(v,loop_time_ms);
+  Serial.print(v);
   Serial.print("}");
 }
 
