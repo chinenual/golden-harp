@@ -18,6 +18,7 @@ var settingsflag = flag.String("settings", "", "Settings file override")
 var versionflag = flag.Bool("getversion", false, "get the Arduino's firmware build date")
 var getflag = flag.Bool("getconfig", false, "get the config from the attached Arduino")
 var setflag = flag.String("setconfig", "", "set the config to the attached Arduino")
+var settimingflag = flag.Bool("settiming", false, "set the timing config to the attached Arduino")
 
 func ConnectToArduino() (err error) {
 	if !SerialConnected() {
@@ -111,6 +112,17 @@ func main() {
 			CmdSetPreset(len(packedPresets), i, packedPresets[i])
 		}
 	}
+	if *settimingflag {
+		ranACommand = true
+		if err = ConnectToArduino(); err != nil {
+			applog.Printf("ERROR: %v\n", err)
+			os.Exit(1)
+		}
+		if err = CmdSetTimingParams(userSettings.MaxNoteLen, userSettings.LoopTime); err != nil {
+			applog.Printf("ERROR: could not set timing params: %v\n", err)
+		}
+
+	}
 	if *getflag {
 		ranACommand = true
 		if err = ConnectToArduino(); err != nil {
@@ -120,14 +132,18 @@ func main() {
 
 		var presets []Preset
 		var scales []Scale
-		if presets, scales, err = CmdGetConfig(); err != nil {
+		var maxNoteLen int
+		var loopTime int
+		if presets, scales, maxNoteLen, loopTime, err = CmdGetConfig(); err != nil {
 			applog.Printf("ERROR: %v\n", err)
 			os.Exit(1)
 		}
 		applog.Printf("presets: %#v\n", presets)
 		applog.Printf("scales: %#v\n", scales)
+		applog.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
 		fmt.Printf("presets: %#v\n", presets)
 		fmt.Printf("scales: %#v\n", scales)
+		fmt.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
 		return
 	}
 	if !ranACommand {

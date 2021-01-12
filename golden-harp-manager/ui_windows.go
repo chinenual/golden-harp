@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/tadvi/winc"
 	"os"
+	"strconv"
 )
 
 func btnOnClick(arg *winc.Event) {
@@ -109,22 +110,38 @@ func setStatus(status string, version string) {
 func showSettingsDialog(context winc.Controller) {
 	dlg := winc.NewDialog(context)
 	dlg.SetText("Settings")
-	dlg.SetSize(300, 300)
+	dlg.SetSize(350, 200)
 
-	lbl := winc.NewLabel(dlg)
-	lbl.SetPos(10, 20)
-	lbl.SetText("Serial Port")
+	lbl1 := winc.NewLabel(dlg)
+	lbl1.SetPos(10, 20)
+	lbl1.SetText("Serial Port")
 
-	txt := winc.NewEdit(dlg)
-	txt.SetText(userSettings.SerialPort)
-	txt.SetPos(100, 20)
+	txt1 := winc.NewEdit(dlg)
+	txt1.SetText(userSettings.SerialPort)
+	txt1.SetPos(130, 20)
+
+	lbl2 := winc.NewLabel(dlg)
+	lbl2.SetPos(10, 50)
+	lbl2.SetText("Max Note Length (ms)")
+
+	txt2 := winc.NewEdit(dlg)
+	txt2.SetText(strconv.Itoa(userSettings.MaxNoteLen))
+	txt2.SetPos(130, 50)
+
+	lbl3 := winc.NewLabel(dlg)
+	lbl3.SetPos(10, 80)
+	lbl3.SetText("Note Resolution (ms)")
+
+	txt3 := winc.NewEdit(dlg)
+	txt3.SetText(strconv.Itoa(userSettings.LoopTime))
+	txt3.SetPos(130, 80)
 
 	cancelBtn := winc.NewPushButton(dlg)
-	cancelBtn.SetPos(100, 50)
+	cancelBtn.SetPos(100, 110)
 	cancelBtn.SetText("Cancel")
 
 	saveBtn := winc.NewPushButton(dlg)
-	saveBtn.SetPos(0, 50)
+	saveBtn.SetPos(0, 110)
 	saveBtn.SetText("Save")
 	//	dlg.SetButtons(saveBtn, cancelBtn)
 
@@ -133,11 +150,23 @@ func showSettingsDialog(context winc.Controller) {
 	})
 
 	saveBtn.OnClick().Bind(func(e *winc.Event) {
-		defer dlg.Close()
 		SerialClose()
 		setStatus("Not connected", "")
-		userSettings.SerialPort = txt.Text()
-		if err := SaveSettings(); err != nil {
+		userSettings.SerialPort = txt1.Text()
+		var err error
+		if userSettings.MaxNoteLen, err = strconv.Atoi(txt2.Text()); err != nil {
+			applog.Printf("ERROR: could not parse Note Length as integer: %v\n", err)
+			winc.Errorf(dlg, "Error: could not parse Note Length as integer: %v", err)
+			return
+		}
+		if userSettings.LoopTime, err = strconv.Atoi(txt3.Text()); err != nil {
+			applog.Printf("ERROR: could not parse Note Resolution as integer: %v\n", err)
+			winc.Errorf(dlg, "Error: could not parse Note Resolution as integer: %v", err)
+			return
+		}
+
+		defer dlg.Close()
+		if err = SaveSettings(); err != nil {
 			applog.Printf("ERROR: could not save settings: %v\n", err)
 			winc.Errorf(dlg, "Error: could not save settings: %v", err)
 			return
@@ -242,13 +271,15 @@ func WindowsUI() {
 		}
 
 		updateProgressBar(3)
-		if presets, scales, err := CmdGetConfig(); err != nil {
+
+		if presets, scales, maxNoteLen, loopTime, err := CmdGetConfig(); err != nil {
 			applog.Printf("ERROR: could not get config from Arduino %v\n", err)
 			winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
 			return
 		} else {
 			applog.Printf("presets: %#v\n", presets)
 			applog.Printf("scales: %#v\n", scales)
+			applog.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
 			drawPresets(ls, presets, scales)
 		}
 		return
@@ -266,7 +297,7 @@ func WindowsUI() {
 			}
 			applog.Printf("Loaded %s\n", filePath)
 
-			openProgressBar(mainWindow, 6)
+			openProgressBar(mainWindow, 7)
 			defer closeProgressBar()
 			if err := ConnectToArduino(); err != nil {
 				applog.Printf("ERROR: could not connect to Arduino: %v\n", err)
@@ -283,6 +314,12 @@ func WindowsUI() {
 			}
 
 			updateProgressBar(3)
+			if err := CmdSetTimingParams(userSettings.MaxNoteLen, userSettings.LoopTime); err != nil {
+				applog.Printf("ERROR: could not set timing params: %v\n", err)
+				winc.Errorf(mainWindow, "Error: could not set timing params: %v", err)
+			}
+
+			updateProgressBar(4)
 			for i, _ := range packedScales {
 				if err := CmdSetScale(len(packedScales), i, packedScales[i]); err != nil {
 					applog.Printf("ERROR: could not get send scale config to Arduino %v\n", err)
@@ -290,7 +327,7 @@ func WindowsUI() {
 					return
 				}
 			}
-			updateProgressBar(4)
+			updateProgressBar(5)
 			for i, _ := range packedPresets {
 				if err := CmdSetPreset(len(packedPresets), i, packedPresets[i]); err != nil {
 					applog.Printf("ERROR: could not get send preset config to Arduino %v\n", err)
@@ -298,14 +335,15 @@ func WindowsUI() {
 					return
 				}
 			}
-			updateProgressBar(5)
-			if presets, scales, err := CmdGetConfig(); err != nil {
+			updateProgressBar(6)
+			if presets, scales, maxNoteLen, loopTime, err := CmdGetConfig(); err != nil {
 				applog.Printf("ERROR: could not get config from Arduino %v\n", err)
 				winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
 				return
 			} else {
 				applog.Printf("presets: %#v\n", presets)
 				applog.Printf("scales: %#v\n", scales)
+				applog.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
 				drawPresets(ls, presets, scales)
 			}
 

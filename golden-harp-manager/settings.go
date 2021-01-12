@@ -9,11 +9,15 @@ import (
 type Settings struct {
 	SerialPort string
 	SerialBaud uint
+	MaxNoteLen int
+	LoopTime   int
 }
 
 var userSettings = Settings{
 	SerialPort: "COM1",
 	SerialBaud: 9600,
+	MaxNoteLen: 2500,
+	LoopTime:   50,
 }
 
 var settingsPathname = getWorkingDirectory() + "/settings.json"

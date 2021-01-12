@@ -24,7 +24,7 @@ func CmdVersion() (version string, timestamp string, err error) {
 	return
 }
 
-func CmdGetConfig() (presets []Preset, scales []Scale, err error) {
+func CmdGetConfig() (presets []Preset, scales []Scale, maxNoteLen int, loopTime int, err error) {
 
 	if err = SerialWriteCommand([]byte("{cmd: \"getconfig\"}")); err != nil {
 		applog.Printf("ERROR: %v\n", err)
@@ -36,8 +36,10 @@ func CmdGetConfig() (presets []Preset, scales []Scale, err error) {
 		return
 	}
 	var config struct {
-		Scales  []Scale
-		Presets []Preset
+		Scales     []Scale
+		Presets    []Preset
+		MaxNoteLen int `json:"maxnotelen"`
+		LoopTime   int `json:"looptime"`
 	}
 	if err = json.Unmarshal([]byte(bytes), &config); err != nil {
 		return
@@ -45,7 +47,31 @@ func CmdGetConfig() (presets []Preset, scales []Scale, err error) {
 
 	presets = config.Presets
 	scales = config.Scales
+	maxNoteLen = config.MaxNoteLen
+	loopTime = config.LoopTime
 	return
+}
+func CmdSetTimingParams(maxNoteLen int, loopTime int) (err error) {
+	val := struct {
+		Cmd        string `json:"cmd"`
+		MaxNoteLen int    `json:"maxnotelen"`
+		LoopTime   int    `json:"looptime"`
+	}{
+		Cmd:        "settiming",
+		MaxNoteLen: maxNoteLen,
+		LoopTime:   loopTime,
+	}
+	var bytes []byte
+	if bytes, err = json.Marshal(val); err != nil {
+		return
+	}
+	SerialWriteCommand(bytes)
+	if bytes, err = SerialReadResponse(); err != nil {
+		applog.Printf("ERROR: %v\n", err)
+		return
+	}
+	return
+
 }
 
 func CmdSetScale(total int, index int, scale Scale) (err error) {
