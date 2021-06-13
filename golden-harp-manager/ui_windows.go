@@ -69,7 +69,7 @@ func closeProgressBar() {
 
 func drawPresets(list *winc.ListView, presets []Preset, scales []Scale) {
 	list.DeleteAllItems()
-	for i := 0; i < 37; i++ {
+	for i := 36; i >= 0; i-- {
 		var preset Preset
 		found := false
 		for _, p := range presets {
@@ -79,19 +79,20 @@ func drawPresets(list *winc.ListView, presets []Preset, scales []Scale) {
 				break
 			}
 		}
+		numLabel := fmt.Sprintf("%d", i+1)
 		presetLabel := fmt.Sprintf("%s%d", NOTE_NAMES[i%12], (i/12)+1)
 
 		if found {
 			leftRootLabel := fmt.Sprintf("%s%d", NOTE_NAMES[preset.Left.Base%12], (preset.Left.Base/12)-2)
 			rightRootLabel := fmt.Sprintf("%s%d", NOTE_NAMES[preset.Right.Base%12], (preset.Right.Base/12)-2)
 
-			p1 := &Item{[]string{presetLabel,
+			p1 := &Item{[]string{numLabel, presetLabel,
 				leftRootLabel, scaleString(scales[preset.Left.Scale]), fmt.Sprintf("%d", preset.Left.Channel+1),
 				rightRootLabel, scaleString(scales[preset.Right.Scale]), fmt.Sprintf("%d", preset.Right.Channel+1)}}
 			list.AddItem(p1)
 
 		} else {
-			p1 := &Item{[]string{presetLabel}}
+			p1 := &Item{[]string{numLabel, presetLabel}}
 			list.AddItem(p1)
 		}
 	}
@@ -236,7 +237,8 @@ func WindowsUI() {
 	setStatus("Not connected", "")
 
 	ls := winc.NewListView(mainWindow)
-	ls.AddColumn("Preset", 60)
+	ls.AddColumn("Preset", 50)
+	ls.AddColumn("Key", 40)
 	ls.AddColumn("L Base", 60)
 	ls.AddColumn("L Intervals", 200)
 	ls.AddColumn("L Channel", 60)
