@@ -95,7 +95,7 @@ func readPresets(f *excelize.File) (err error) {
 		fmt.Println(err)
 		return
 	}
-	var count = 0
+	var rowNum = 0
 	var keyPosition = 0
 	for rows.Next() {
 		// skip the header rows
@@ -103,10 +103,13 @@ func readPresets(f *excelize.File) (err error) {
 		if colVals, err = rows.Columns(); err != nil {
 			return err
 		}
-		if count >= 2 {
-			if keyPosition > 46 {
+		if rowNum >= 2 { // first two rows are headers
+			if strings.TrimSpace(colVals[0]) == "" {
 				break
 			}
+			keyPosition, _ = strconv.Atoi(colVals[0])
+			keyPosition -= 1 // one based in the spreadsheet; convert to zero-based
+
 			if len(colVals) >= 8 {
 				if strings.TrimSpace(colVals[2]) != "" {
 					var preset Preset
@@ -136,9 +139,8 @@ func readPresets(f *excelize.File) (err error) {
 					packedPresets = append(packedPresets, preset)
 				}
 			}
-			keyPosition++
 		}
-		count = count + 1
+		rowNum = rowNum + 1
 	}
 	return
 }
