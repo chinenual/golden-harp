@@ -180,7 +180,7 @@ func showSettingsDialog(context winc.Controller) {
 func showAboutDialog(context winc.Controller) {
 	winc.MsgBoxOk(context,
 		"About Golden Harp Manager",
-		"Version "+Version+"\nCopyright 2020 Steve Tynor (steve.tynor@chinenual.com)")
+		"Version "+Version+"\nCopyright 2021 Steve Tynor (steve.tynor@chinenual.com)")
 }
 
 func WindowsUI() {
