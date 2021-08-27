@@ -1,4 +1,5 @@
-An updated interface to [Iasos's](https://iasos.com/) "Golden Harp".
+An updated interface to [Iasos's](https://iasos.com/)
+["Golden Harp"](https://www.youtube.com/watch?v=cd00t0UGsC0).
 
 The golden harp hardware was built by a now-defunct company named
 UME.  It consisted of a small keyboard with two touch
