@@ -209,8 +209,17 @@ int hardware_to_key_table[NUM_KEYS] = {
 //   96: C3:  0:0:0:0:0:16:0:0:0:0:0:0:0:0:0:0:   [5 - 16]
 
 
+// Iasos's harps sometimes start sending "stuck" notes.  On the theory that there's some sort of residual 
+// charge on the controller side that is pre-populating the serial state, attempt to "zero" it at startup.
+void sanitize_input() {
+  pinMode(KBD_READ_PIN, OUTPUT);
+  digitalWrite(KBD_READ_PIN, 0);
+  pinMode(KBD_READ_PIN, INPUT);
+}
 
 void harpin_setup() {
+  sanitize_input();
+
   pinMode(KBD_LATCH_PIN, OUTPUT);
   pinMode(KBD_CLOCK_PIN, OUTPUT);
   pinMode(KBD_READ_PIN, INPUT);
@@ -222,6 +231,7 @@ void harpin_setup() {
   for (int i = 0; i < NUM_KEYS; i++) {
     key_state[i] = 0L;
   }
+
 }
 
 
