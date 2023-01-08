@@ -2,6 +2,18 @@ void usbconfig_setup() {
   //  show_version();
 }
 
+
+void debug_start() {
+  if (debug_enabled) {
+    Serial.print(F("{\"DEBUG\": \"\" "));
+  }
+}
+void debug_end() {
+  if (debug_enabled) {
+    Serial.print(F("}"));
+  }
+}
+
 int show_version() {
   Serial.print(F("{\"status\": \"OK\", \"version\": \"" VERSION "\", \"timestamp\": \"" __DATE__ " " __TIME__ "\"}"));
 }
@@ -30,11 +42,11 @@ int set_preset(byte total_n, byte preset_index, JsonObject cfg) {
     return;
   }
   config_write_byte(presets[preset_index].key, cfg[F("key")]);
-  config_write_byte(presets[preset_index].l_preset.base_note   , cfg[F("l")][F("base")]);
-  config_write_byte(presets[preset_index].l_preset.scale       , cfg[F("l")][F("scale")]);
+  config_write_byte(presets[preset_index].l_preset.base_note, cfg[F("l")][F("base")]);
+  config_write_byte(presets[preset_index].l_preset.scale, cfg[F("l")][F("scale")]);
   config_write_byte(presets[preset_index].l_preset.midi_channel, cfg[F("l")][F("chan")]);
-  config_write_byte(presets[preset_index].r_preset.base_note   , cfg[F("r")][F("base")]);
-  config_write_byte(presets[preset_index].r_preset.scale       , cfg[F("r")][F("scale")]);
+  config_write_byte(presets[preset_index].r_preset.base_note, cfg[F("r")][F("base")]);
+  config_write_byte(presets[preset_index].r_preset.scale, cfg[F("r")][F("scale")]);
   config_write_byte(presets[preset_index].r_preset.midi_channel, cfg[F("r")][F("chan")]);
 
   config_write_byte(n_presets, total_n);
@@ -42,14 +54,14 @@ int set_preset(byte total_n, byte preset_index, JsonObject cfg) {
 }
 
 int set_timing(unsigned short max_note_length, byte loop_time) {
-    config_write_uint16(max_note_length_ms, max_note_length);
-    // we cache the value for quick retrieval in the loop() routine
-    max_note_length_ms = max_note_length;
-    
-    config_write_byte(loop_time_ms, loop_time);
-    // we cache the value for quick retrieval in the loop() routine
-    loop_time_ms = loop_time_ms;
-    Serial.print(F("{\"status\": \"OK\"}"));  
+  config_write_uint16(max_note_length_ms, max_note_length);
+  // we cache the value for quick retrieval in the loop() routine
+  max_note_length_ms = max_note_length;
+
+  config_write_byte(loop_time_ms, loop_time);
+  // we cache the value for quick retrieval in the loop() routine
+  loop_time_ms = loop_time_ms;
+  Serial.print(F("{\"status\": \"OK\"}"));
 }
 
 
@@ -65,6 +77,12 @@ void usbconfig_loop() {
       if (doc[F("cmd")] == F("version")) {
         show_version();
 
+      } else if (doc[F("cmd")] == F("setdebug")) {
+        debug_enabled = doc[F("gen")].as<bool>();
+        debug_midi_enabled = doc[F("midi")].as<bool>();
+        debug_hw_enabled = doc[F("hw")].as<bool>();
+        Serial.print(F("{\"status\": \"OK\"}"));
+
       } else if (doc[F("cmd")] == F("getconfig")) {
         config_print();
 
@@ -76,7 +94,7 @@ void usbconfig_loop() {
 
       } else if (doc[F("cmd")] == F("settiming")) {
         set_timing(doc[F("maxnotelen")].as<short>(), doc[F("looptime")].as<int>());
-                
+
       } else {
         Serial.print(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));
       }

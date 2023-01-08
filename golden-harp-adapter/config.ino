@@ -1,8 +1,8 @@
 
-int r_channel; // MIDI channel for right strip
-int l_channel; // MIDI channel for right strip
-int r_scale[MAX_R_STRIP - MIN_R_STRIP + 1]; // scaling offsets for the right strip
-int l_scale[MAX_L_STRIP - MIN_L_STRIP + 1]; // scaling offsets for the left strip
+int r_channel;                               // MIDI channel for right strip
+int l_channel;                               // MIDI channel for right strip
+int r_scale[MAX_R_STRIP - MIN_R_STRIP + 1];  // scaling offsets for the right strip
+int l_scale[MAX_L_STRIP - MIN_L_STRIP + 1];  // scaling offsets for the left strip
 
 typedef struct strip_preset_s {
   byte base_note;
@@ -39,38 +39,44 @@ typedef union packed_scale_definition_u {
 // plenty of the EEPROM free for other config if we need it.
 
 #define MAX_PRESETS 37
-#define MAX_SCALES  74
+#define MAX_SCALES 74
 
 // Use EEPROM.update to try to minimize the absolute number of writes to the EEPROM (which is limited to 100,000 cycles)
-#  define config_write_byte(offset_expression, val) EEPROM.update(&(config_for_offset.offset_expression)-(byte*)&config_for_offset,val)
-#  define config_read_byte(tgt, offset_expression) EEPROM.get(&(config_for_offset.offset_expression)-(byte*)&config_for_offset,tgt)
+#define config_write_byte(offset_expression, val) EEPROM.update(&(config_for_offset.offset_expression) - (byte*)&config_for_offset, val)
+#define config_read_byte(tgt, offset_expression) EEPROM.get(&(config_for_offset.offset_expression) - (byte*)&config_for_offset, tgt)
 
-#  define config_write_uint16(offset_expression,val)\
-{\
-  union { byte b[2]; unsigned short v;} u;  \
-  u.v = val; \
-  EEPROM.update((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset,u.b[0]);\
-  EEPROM.update((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset + 1,u.b[1]);\
-}
-#  define config_read_uint16(tgt,offset_expression)\
-{\
-  union { byte b[2]; unsigned short v;} u;  \
-  EEPROM.get((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset,u.b[0]);\
-  EEPROM.get((byte*)&(config_for_offset.offset_expression)-(byte*)&config_for_offset + 1,u.b[1]);\
-  tgt = u.v;\
-}
+#define config_write_uint16(offset_expression, val) \
+  { \
+    union { \
+      byte b[2]; \
+      unsigned short v; \
+    } u; \
+    u.v = val; \
+    EEPROM.update((byte*)&(config_for_offset.offset_expression) - (byte*)&config_for_offset, u.b[0]); \
+    EEPROM.update((byte*)&(config_for_offset.offset_expression) - (byte*)&config_for_offset + 1, u.b[1]); \
+  }
+#define config_read_uint16(tgt, offset_expression) \
+  { \
+    union { \
+      byte b[2]; \
+      unsigned short v; \
+    } u; \
+    EEPROM.get((byte*)&(config_for_offset.offset_expression) - (byte*)&config_for_offset, u.b[0]); \
+    EEPROM.get((byte*)&(config_for_offset.offset_expression) - (byte*)&config_for_offset + 1, u.b[1]); \
+    tgt = u.v; \
+  }
 
 #else
 // when developing need a smaller number of presets and scales since everything has to fit in memory
 #define MAX_PRESETS 4
-#define MAX_SCALES  8
+#define MAX_SCALES 8
 
 // when developing, don't use EEPROM (since it has limited number of write cycles)
 
-#  define config_write_byte(offset_expression, val) config.offset_expression = (val)
-#  define config_read_byte(tgt, offset_expression) tgt = config.offset_expression
-#  define config_write_uint16(offset_expression, val) config.offset_expression = (val)
-#  define config_read_uint16(tgt, offset_expression) tgt = config.offset_expression
+#define config_write_byte(offset_expression, val) config.offset_expression = (val)
+#define config_read_byte(tgt, offset_expression) tgt = config.offset_expression
+#define config_write_uint16(offset_expression, val) config.offset_expression = (val)
+#define config_read_uint16(tgt, offset_expression) tgt = config.offset_expression
 
 #endif
 
@@ -87,7 +93,7 @@ typedef struct config_s {
   // events within a millisecond of each other. Tune this so that the controller is responsive, but not
   // spewing a lot of overlapping MIDI events
   byte loop_time_ms;
-  
+
   // time in milliseconds for max amount of time a note can sound
   unsigned short max_note_length_ms;
 
@@ -98,7 +104,7 @@ typedef struct config_s {
 } config_t;
 
 #if CONFIG_IN_EEPROM
-config_t config_for_offset; // unused except as a convenient way to compute the offset to a given byte in the EEPROM
+config_t config_for_offset;  // unused except as a convenient way to compute the offset to a given byte in the EEPROM
 #else
 config_t config;
 #endif
@@ -113,22 +119,21 @@ void config_setup() {
       // If config in EEPROM, don't configure defaults -- trust what's in the EEPROM. (NOTE the very first time the arduino runs with
       // EEPROM enabled, the config will be uninitialized and may contain garbage values.
 
-      config_write_byte(n_scales,  1);
+      config_write_byte(n_scales, 1);
       config_write_byte(n_presets, 1);
 
       // chromatic
-      int intervals0[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+      int intervals0[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
       pack_scale(8, intervals0, 0);
 
       // chromatic scale based at 2 octaves below middle-C (and the left strip 1 octaves higher)
       config_write_byte(presets[0].key, 0);
       config_write_byte(presets[0].l_preset.base_note, MIDI_MIDDLE_C - 24 + 12);
       config_write_byte(presets[0].l_preset.scale, 0);
-      config_write_byte(presets[0].l_preset.midi_channel, 0); // "All"
+      config_write_byte(presets[0].l_preset.midi_channel, 0);  // "All"
       config_write_byte(presets[0].r_preset.base_note, MIDI_MIDDLE_C - 24);
       config_write_byte(presets[0].r_preset.scale, 0);
-      config_write_byte(presets[0].r_preset.midi_channel, 0); // "All"
-
+      config_write_byte(presets[0].r_preset.midi_channel, 0);  // "All"
     }
 
     if (telltale != CONFIG_TELLTALE_1_1) {
@@ -193,9 +198,12 @@ void scale_init(byte scale_num, int base_note, int num_values, int scale[]) {
 }
 
 void use_preset(byte key) {
-  //  Serial.print("# PRESET ");
-  //  Serial.print(num, DEC);
-  //  Serial.println();
+  if (debug_enabled) {
+    debug_start();
+    Serial.print(F("\"preset\": "));
+    Serial.print(num, DEC);
+    debug_end();
+  }
 
   int num = -1;
   byte n_presets;
@@ -209,7 +217,11 @@ void use_preset(byte key) {
     }
   }
   if (num < 0) {
-    //    Serial.println("#  -> no such preset defined. Ignored.");
+    if (debug_enabled) {
+      debug_start();
+      Serial.println(F("\"warn\":\"no such preset defined. Ignored.\""));
+      debug_end();
+    }
     return;
   }
   {
@@ -243,11 +255,11 @@ void config_print() {
   config_printPresets();
   Serial.print(", \"maxnotelen\" : ");
   unsigned short i;
-  config_read_uint16(i,max_note_length_ms);
+  config_read_uint16(i, max_note_length_ms);
   Serial.print(i);
   Serial.print(", \"looptime\" : ");
   byte v;
-  config_read_byte(v,loop_time_ms);
+  config_read_byte(v, loop_time_ms);
   Serial.print(v);
   Serial.print("}");
 }

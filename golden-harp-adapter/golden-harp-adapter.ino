@@ -60,9 +60,13 @@
 unsigned long loop_time_ms;
 unsigned short max_note_length_ms;
 
+bool debug_enabled;
 
 void setup()
 {
+  debug_enabled = false;
+  debug_midi_enabled = false;
+  debug_hw_enabled = false;
 
   Serial.begin(USB_BAUD);
 //  Serial.println("# begin setup");

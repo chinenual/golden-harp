@@ -23,7 +23,6 @@ func CmdVersion() (version string, timestamp string, err error) {
 	timestamp = data["timestamp"].(string)
 	return
 }
-
 func CmdGetConfig() (presets []Preset, scales []Scale, maxNoteLen int, loopTime int, err error) {
 
 	if err = SerialWriteCommand([]byte("{cmd: \"getconfig\"}")); err != nil {
@@ -109,6 +108,30 @@ func CmdSetPreset(total int, index int, preset Preset) (err error) {
 		Total:  total,
 		N:      index,
 		Preset: preset,
+	}
+
+	var bytes []byte
+	if bytes, err = json.Marshal(val); err != nil {
+		return
+	}
+	SerialWriteCommand(bytes)
+	if bytes, err = SerialReadResponse(); err != nil {
+		applog.Printf("ERROR: %v\n", err)
+		return
+	}
+	return
+}
+func CmdSetDebug(general, midi, hw bool) (err error) {
+	val := struct {
+		Cmd  string `json:"cmd"`
+		gen  bool   `json:"gen"`
+		midi bool   `json:"midi"`
+		hw   bool   `json:"hw"`
+	}{
+		Cmd:  "setdebug",
+		gen:  general,
+		midi: midi,
+		hw:   hw,
 	}
 
 	var bytes []byte

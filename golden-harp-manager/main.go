@@ -14,6 +14,7 @@ const AppName = "Golden Harp Manager"
 
 var applog *log.Logger
 
+var debugflag = flag.Bool("debug", false, "put adapter into debug mode and monitor")
 var settingsflag = flag.String("settings", "", "Settings file override")
 var versionflag = flag.Bool("getversion", false, "get the Arduino's firmware build date")
 var getflag = flag.Bool("getconfig", false, "get the config from the attached Arduino")
@@ -145,6 +146,18 @@ func main() {
 		fmt.Printf("scales: %#v\n", scales)
 		fmt.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
 		return
+	}
+
+	if *debugflag {
+		ranACommand = true
+		if err = ConnectToArduino(); err != nil {
+			applog.Printf("ERROR: %v\n", err)
+			os.Exit(1)
+		}
+		if err = CmdSetDebug(true, true, true); err != nil {
+			applog.Printf("ERROR: %v\n", err)
+			os.Exit(1)
+		}
 	}
 	if !ranACommand {
 		WindowsUI()

@@ -15,15 +15,17 @@ void midi_note_on(int note, int channel) {
   midi_serial_out.write(note);
   midi_serial_out.write(MIDI_VELOCITY);
 
-#if VERBOSE_MIDI
-  Serial.print("# MIDI note on: ");
-  Serial.print(opcode, HEX);
-  Serial.print(" ");
-  Serial.print(note, HEX);
-  Serial.print(" ");
-  Serial.print(MIDI_VELOCITY, HEX);
-  Serial.println();
-#endif
+  if (debug_midi_enabled) {
+    debug_start();
+    Serial.print(F("\"MIDI-ON\":\"");
+    Serial.print(opcode, HEX);
+    Serial.print(F(" "));
+    Serial.print(note, HEX);
+    Serial.print(F(" "));
+    Serial.print(MIDI_VELOCITY, HEX);
+    Serial.print(F("\""));
+    debug_end();
+  }
 }
 
 void midi_note_off(int note, int channel) {
@@ -32,14 +34,15 @@ void midi_note_off(int note, int channel) {
   midi_serial_out.write(note);
   midi_serial_out.write((int)0);
 
-#if VERBOSE_MIDI
-  Serial.print("# MIDI note off: ");
-  Serial.print(opcode, HEX);
-  Serial.print(" ");
-  Serial.print(note, HEX);
-  Serial.print(" ");
-  Serial.print(0, HEX);
-  Serial.println();
-#endif
+  if (debug_midi_enabled) {
+    debug_start();
+    Serial.print(F("\"MIDI-OFF\":\"");
+    Serial.print(opcode, HEX);
+    Serial.print(F(" "));
+    Serial.print(note, HEX);
+    Serial.print(F(" "));
+    Serial.print(0, HEX);
+    Serial.print(F("\""));
+    debug_end();
+  }
 }
-
