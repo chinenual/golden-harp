@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"github.com/jacobsa/go-serial/serial"
 	"github.com/pkg/errors"
 	"io"
@@ -68,33 +67,23 @@ func writeLine(bytes []byte) (err error) {
 // the command processor needing to wait for them
 func readInput() {
 	for {
-		fmt.Println("readinput 1")
 		bytes, err := readLine()
-		fmt.Println("readinput 2")
 		// already logged of err != nil
 		if err == nil {
-			fmt.Println("readinput 3")
 			var data map[string]interface{}
 			if err = json.Unmarshal([]byte(bytes), &data); err != nil {
 				continue
 			}
-			fmt.Println("readinput 4 " + string(bytes))
 			if data["DEBUG"] != nil {
 				str := string(bytes)
-				fmt.Println("readinput 5")
-				applog.Printf("DEBUG: \"%s\"", str)
+				applog.Printf("DEBUG: %s", str)
 				DisplayDebug(str)
 			} else {
-				fmt.Println("readinput 6")
 				inputChan <- bytes
 				// let the other coroutine wake up
-				fmt.Println("readinput 6.1")
 				time.Sleep(2000 * time.Millisecond)
-				fmt.Println("readinput 6.2")
 			}
-			fmt.Println("readinput 7")
 		}
-		fmt.Println("readinput 8")
 	}
 }
 
@@ -114,9 +103,7 @@ func SerialWriteCommand(json []byte) (err error) {
 }
 
 func SerialReadResponse() (json []byte, err error) {
-	fmt.Println("SerialReadResponse 1")
 	json = <-inputChan
-	fmt.Println("SerialReadResponse 2")
 	applog.Printf("READ: \"%s\"", string(json))
 	return
 }

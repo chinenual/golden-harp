@@ -124,14 +124,14 @@ func CmdSetPreset(total int, index int, preset Preset) (err error) {
 func CmdSetDebug(general, midi, hw bool) (err error) {
 	val := struct {
 		Cmd  string `json:"cmd"`
-		gen  bool   `json:"gen"`
-		midi bool   `json:"midi"`
-		hw   bool   `json:"hw"`
+		Gen  bool   `json:"gen"`
+		Midi bool   `json:"midi"`
+		Hw   bool   `json:"hw"`
 	}{
 		Cmd:  "setdebug",
-		gen:  general,
-		midi: midi,
-		hw:   hw,
+		Gen:  general,
+		Midi: midi,
+		Hw:   hw,
 	}
 
 	var bytes []byte
