@@ -61,6 +61,8 @@ unsigned long loop_time_ms;
 unsigned short max_note_length_ms;
 
 bool debug_enabled;
+bool debug_midi_enabled;
+bool debug_hw_enabled;
 
 void setup()
 {

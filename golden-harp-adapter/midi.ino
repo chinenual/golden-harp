@@ -17,12 +17,10 @@ void midi_note_on(int note, int channel) {
 
   if (debug_midi_enabled) {
     debug_start();
-    Serial.print(F("\"MIDI-ON\":\"");
-    Serial.print(opcode, HEX);
+    Serial.print(F("\"MIDI-ON\":\""));
+    Serial.print(note, DEC);
     Serial.print(F(" "));
-    Serial.print(note, HEX);
-    Serial.print(F(" "));
-    Serial.print(MIDI_VELOCITY, HEX);
+    Serial.print(MIDI_VELOCITY, DEC);
     Serial.print(F("\""));
     debug_end();
   }
@@ -36,12 +34,10 @@ void midi_note_off(int note, int channel) {
 
   if (debug_midi_enabled) {
     debug_start();
-    Serial.print(F("\"MIDI-OFF\":\"");
-    Serial.print(opcode, HEX);
+    Serial.print(F("\"MIDI-OFF\":\""));
+    Serial.print(note, DEC);
     Serial.print(F(" "));
-    Serial.print(note, HEX);
-    Serial.print(F(" "));
-    Serial.print(0, HEX);
+    Serial.print(0, DEC);
     Serial.print(F("\""));
     debug_end();
   }

@@ -5,12 +5,13 @@ void usbconfig_setup() {
 
 void debug_start() {
   if (debug_enabled) {
-    Serial.print(F("{\"DEBUG\": \"\" "));
+    Serial.print(F("{\"DEBUG\": \"\", "));
   }
 }
 void debug_end() {
   if (debug_enabled) {
     Serial.print(F("}"));
+    Serial.println();
   }
 }
 

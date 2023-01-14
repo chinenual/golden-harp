@@ -304,7 +304,7 @@ int scale_note(int key) {
       Serial.print(F("\"saw R\":"));
       Serial.print(key, DEC);
       Serial.print(F(",\"scaled\":"));
-      Serial.print(key_scale[key - MIN_R_STRIP], DEC);
+      Serial.print(r_scale[key - MIN_R_STRIP], DEC);
       debug_end();
     }
     return r_scale[key - MIN_R_STRIP];
@@ -314,7 +314,7 @@ int scale_note(int key) {
       Serial.print(F("\"saw L\":"));
       Serial.print(key, DEC);
       Serial.print(F(",\"scaled\":"));
-      Serial.print(key_scale[key - MIN_L_STRIP], DEC);
+      Serial.print(l_scale[key - MIN_L_STRIP], DEC);
       debug_end();
     }
     return l_scale[key - MIN_L_STRIP];
@@ -370,9 +370,9 @@ void harpin_loop() {
     }
     has_data += hardware_bytes[i] != 0;
   }
-  if (debug_hardware_enabled && has_data) {
+  if (debug_hw_enabled && has_data) {
     debug_start();
-    Serial.print(F("\hwbytes"\":\""));
+    Serial.print(F("\"hwbytes\":\""));
     for (int i = 0; i < 16; i++) {
       Serial.print(hardware_bytes[i], HEX);
       Serial.print(':');

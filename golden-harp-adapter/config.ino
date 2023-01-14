@@ -198,13 +198,6 @@ void scale_init(byte scale_num, int base_note, int num_values, int scale[]) {
 }
 
 void use_preset(byte key) {
-  if (debug_enabled) {
-    debug_start();
-    Serial.print(F("\"preset\": "));
-    Serial.print(num, DEC);
-    debug_end();
-  }
-
   int num = -1;
   byte n_presets;
   config_read_byte(n_presets, n_presets);
@@ -215,6 +208,12 @@ void use_preset(byte key) {
       num = i;
       break;
     }
+  }
+  if (debug_enabled) {
+    debug_start();
+    Serial.print(F("\"preset\": "));
+    Serial.print(num, DEC);
+    debug_end();
   }
   if (num < 0) {
     if (debug_enabled) {
