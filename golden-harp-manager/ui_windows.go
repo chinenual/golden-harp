@@ -40,7 +40,6 @@ var arduinoStatusLabel *winc.Label
 
 var NOTE_NAMES = []string{"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"}
 var INTERVAL_NAMES = []string{"1", "b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7"}
-var debugChan chan string
 
 func scaleString(scale Scale) (result string) {
 	for _, interval := range scale.Intervals {
@@ -185,10 +184,6 @@ func showAboutDialog(context winc.Controller) {
 		"Version "+Version+"\nCopyright 2023 Steve Tynor (steve.tynor@chinenual.com)")
 }
 
-func WindowsInit() {
-	debugChan = make(chan string)
-}
-
 func WindowsUI() {
 	winc.SetAppIcon(int(resourceIds["icon_app.ico"]))
 	mainWindow := winc.NewForm(nil)
@@ -200,6 +195,7 @@ func WindowsUI() {
 	menu := mainWindow.NewMenu()
 	fileMn := menu.AddSubMenu("File")
 	settingsMn := fileMn.AddItem("Settings...", winc.NoShortcut)
+	debugMn := fileMn.AddItem("Enable Debug", winc.NoShortcut)
 	exitMn := fileMn.AddItem("Exit", winc.NoShortcut)
 
 	helpMn := menu.AddSubMenu("Help")
@@ -210,6 +206,20 @@ func WindowsUI() {
 	})
 	settingsMn.OnClick().Bind(func(e *winc.Event) {
 		showSettingsDialog(mainWindow)
+	})
+	debugMn.OnClick().Bind(func(e *winc.Event) {
+		println("debug-enable click")
+		if err := ConnectToArduino(); err != nil {
+			applog.Printf("ERROR: could not connect to Arduino: %v\n", err)
+			winc.Errorf(mainWindow, "Error: could not connect to Arduino: %v", err)
+			return
+		}
+		if err := CmdSetDebug(true, true, true); err != nil {
+			applog.Printf("ERROR: could not enable debug logging: %v\n", err)
+			winc.Errorf(mainWindow, "Error: could not enable debug logging: %v", err)
+		} else {
+			setStatus("Debug Enabled", "")
+		}
 	})
 	exitMn.OnClick().Bind(func(e *winc.Event) {
 		mainWindow.Close()
@@ -362,24 +372,5 @@ func WindowsUI() {
 	mainWindow.Show()
 	mainWindow.OnClose().Bind(wndOnClose)
 
-	go readDebug()
-
 	winc.RunMainLoop()
-}
-
-func readDebug() {
-	for {
-		str := <-debugChan
-		// display it somehow
-		applog.Printf("DEBUG in WINUI: %s\n", str)
-	}
-	return
-}
-
-func DisplayDebug(str string) {
-	// careful - this can happen even before the UI is initialized. So
-	// just push the strings onto a queue; once the UI is initialized, a worker thread will
-	// pull items off the queue and display them
-
-	debugChan <- str
 }

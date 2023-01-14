@@ -77,7 +77,6 @@ func readInput() {
 			if data["DEBUG"] != nil {
 				str := string(bytes)
 				applog.Printf("DEBUG: %s", str)
-				DisplayDebug(str)
 			} else {
 				inputChan <- bytes
 				// let the other coroutine wake up
