@@ -182,11 +182,11 @@ func showSettingsDialog(context winc.Controller) {
 func showAboutDialog(context winc.Controller) {
 	winc.MsgBoxOk(context,
 		"About Golden Harp Manager",
-		"Version "+Version+"\nCopyright 2021 Steve Tynor (steve.tynor@chinenual.com)")
+		"Version "+Version+"\nCopyright 2023 Steve Tynor (steve.tynor@chinenual.com)")
 }
 
 func WindowsInit() {
-	debugChan := make(chan string)
+	debugChan = make(chan string)
 }
 
 func WindowsUI() {
@@ -369,12 +369,9 @@ func WindowsUI() {
 
 func readDebug() {
 	for {
-		select {
-		case str = <-debugChan:
-			// display it somehow
-			applog.Printf("DEBUG in WINUI: %s\n", str)
-			return
-		}
+		str := <-debugChan
+		// display it somehow
+		applog.Printf("DEBUG in WINUI: %s\n", str)
 	}
 	return
 }
