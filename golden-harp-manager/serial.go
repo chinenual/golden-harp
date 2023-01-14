@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"github.com/jacobsa/go-serial/serial"
 	"github.com/pkg/errors"
 	"io"
+	"time"
 )
 
 var bufreader *bufio.Reader
@@ -34,8 +36,8 @@ func SerialInit(port string, baudRate uint) (err error) {
 	rdr := bufio.NewReader(unbuffered)
 	bufreader = bufio.NewReader(rdr)
 
-	inputChan := make(chan []byte)
-	go readInput(inputChan)
+	inputChan = make(chan []byte)
+	go readInput()
 
 	return
 }
@@ -64,21 +66,35 @@ func writeLine(bytes []byte) (err error) {
 // else assumed to be a command response and puts it on the channel.
 // This allows debug strings to come before and after commands without
 // the command processor needing to wait for them
-func readInput(input chan<- []byte) {
+func readInput() {
 	for {
+		fmt.Println("readinput 1")
 		bytes, err := readLine()
+		fmt.Println("readinput 2")
 		// already logged of err != nil
 		if err == nil {
+			fmt.Println("readinput 3")
 			var data map[string]interface{}
 			if err = json.Unmarshal([]byte(bytes), &data); err != nil {
-				return
+				continue
 			}
+			fmt.Println("readinput 4 " + string(bytes))
 			if data["DEBUG"] != nil {
-				applog.Printf("DEBUG: \"%s\"", string(bytes))
+				str := string(bytes)
+				fmt.Println("readinput 5")
+				applog.Printf("DEBUG: \"%s\"", str)
+				DisplayDebug(str)
 			} else {
-				input <- bytes
+				fmt.Println("readinput 6")
+				inputChan <- bytes
+				// let the other coroutine wake up
+				fmt.Println("readinput 6.1")
+				time.Sleep(2000 * time.Millisecond)
+				fmt.Println("readinput 6.2")
 			}
+			fmt.Println("readinput 7")
 		}
+		fmt.Println("readinput 8")
 	}
 }
 
@@ -98,10 +114,9 @@ func SerialWriteCommand(json []byte) (err error) {
 }
 
 func SerialReadResponse() (json []byte, err error) {
-	select {
-	case json = <-inputChan:
-		applog.Printf("READ: \"%s\"", string(json))
-		return
-	}
+	fmt.Println("SerialReadResponse 1")
+	json = <-inputChan
+	fmt.Println("SerialReadResponse 2")
+	applog.Printf("READ: \"%s\"", string(json))
 	return
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -158,6 +159,12 @@ func main() {
 			applog.Printf("ERROR: %v\n", err)
 			os.Exit(1)
 		}
+
+		// Create a wait group that will never signal "done" - so we can "wait forever" while we consume
+		// the debug log
+		wg := new(sync.WaitGroup)
+		wg.Add(1)
+		wg.Wait()
 	}
 	if !ranACommand {
 		WindowsUI()

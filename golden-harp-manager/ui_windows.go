@@ -1,4 +1,5 @@
-// +build windows, !darwin, !linux
+//go:build windows || !darwin || !linux
+// +build windows !darwin !linux
 
 package main
 
@@ -39,6 +40,7 @@ var arduinoStatusLabel *winc.Label
 
 var NOTE_NAMES = []string{"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"}
 var INTERVAL_NAMES = []string{"1", "b2", "2", "b3", "3", "4", "b5", "5", "b6", "6", "b7", "7"}
+var debugChan chan string
 
 func scaleString(scale Scale) (result string) {
 	for _, interval := range scale.Intervals {
@@ -181,6 +183,10 @@ func showAboutDialog(context winc.Controller) {
 	winc.MsgBoxOk(context,
 		"About Golden Harp Manager",
 		"Version "+Version+"\nCopyright 2021 Steve Tynor (steve.tynor@chinenual.com)")
+}
+
+func WindowsInit() {
+	debugChan := make(chan string)
 }
 
 func WindowsUI() {
@@ -356,5 +362,27 @@ func WindowsUI() {
 	mainWindow.Show()
 	mainWindow.OnClose().Bind(wndOnClose)
 
+	go readDebug()
+
 	winc.RunMainLoop()
+}
+
+func readDebug() {
+	for {
+		select {
+		case str = <-debugChan:
+			// display it somehow
+			applog.Printf("DEBUG in WINUI: %s\n", str)
+			return
+		}
+	}
+	return
+}
+
+func DisplayDebug(str string) {
+	// careful - this can happen even before the UI is initialized. So
+	// just push the strings onto a queue; once the UI is initialized, a worker thread will
+	// pull items off the queue and display them
+
+	debugChan <- str
 }
