@@ -8,3 +8,7 @@ uno:    /dev/cu.usbserial-AL05OC8S (prototype)
 Required libraries:
     ArduinoJson.h - https://arduinojson.org/
     SendOnlySoftwareSerial.h - https://github.com/nickgammon/SendOnlySoftwareSerial
+
+Arduino IDE setup for firmware upload: 
+    Tools->Board Arduino Nano
+    Tools->Processor ATmega328P (Old bootloader)
