@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/xuri/excelize/v2"
 	"github.com/pkg/errors"
+	"github.com/xuri/excelize/v2"
 	"regexp"
 	"strconv"
 	"strings"
@@ -199,7 +199,7 @@ func parseRoot(offsetName string) (root int, err error) {
 	return
 }
 
-//string is 1-based, result is 0-based
+// string is 1-based, result is 0-based
 func parseChannel(channelString string) (channel int, err error) {
 	if strings.TrimSpace(channelString) == "" {
 		channel = 0

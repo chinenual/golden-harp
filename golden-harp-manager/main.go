@@ -120,7 +120,7 @@ func main() {
 			applog.Printf("ERROR: %v\n", err)
 			os.Exit(1)
 		}
-		if err = CmdSetTimingParams(userSettings.MaxNoteLen, userSettings.LoopTime); err != nil {
+		if err = CmdSetTimingParams(userSettings.MinNoteLen, userSettings.MaxNoteLen, userSettings.LoopTime); err != nil {
 			applog.Printf("ERROR: could not set timing params: %v\n", err)
 		}
 
@@ -134,9 +134,10 @@ func main() {
 
 		var presets []Preset
 		var scales []Scale
+		var minNoteLen int
 		var maxNoteLen int
 		var loopTime int
-		if presets, scales, maxNoteLen, loopTime, err = CmdGetConfig(); err != nil {
+		if presets, scales, minNoteLen, maxNoteLen, loopTime, err = CmdGetConfig(); err != nil {
 			applog.Printf("ERROR: %v\n", err)
 			os.Exit(1)
 		}
@@ -145,7 +146,7 @@ func main() {
 		applog.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
 		fmt.Printf("presets: %#v\n", presets)
 		fmt.Printf("scales: %#v\n", scales)
-		fmt.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
+		fmt.Printf("minnotelen: %d maxnotelen: %d looplen: %d\n", minNoteLen, maxNoteLen, loopTime)
 		return
 	}
 

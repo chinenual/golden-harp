@@ -97,10 +97,14 @@ typedef struct config_s {
   // time in milliseconds for max amount of time a note can sound
   unsigned short max_note_length_ms;
 
+  // time in milliseconds for min amount of time a note can sound
+  unsigned short min_note_length_ms;
+
   // add new config at the end and change the CONFIG_TELLTALE telltale byte
 #define CONFIG_TELLTALE_1_0 0xaa
 #define CONFIG_TELLTALE_1_1 0xab
-#define CONFIG_TELLTALE_CURRENT CONFIG_TELLTALE_1_1
+#define CONFIG_TELLTALE_1_4 0xac
+#define CONFIG_TELLTALE_CURRENT CONFIG_TELLTALE_1_4
 } config_t;
 
 #if CONFIG_IN_EEPROM
@@ -114,7 +118,7 @@ void config_setup() {
   byte telltale;
   config_read_byte(telltale, initialized);
   if ((!CONFIG_IN_EEPROM) || (telltale != CONFIG_TELLTALE_CURRENT)) {
-    if (telltale != CONFIG_TELLTALE_1_0 && telltale != CONFIG_TELLTALE_1_1) {
+    if (telltale != CONFIG_TELLTALE_1_0 && telltale != CONFIG_TELLTALE_1_1 && telltale != CONFIG_TELLTALE_1_4) {
 
       // If config in EEPROM, don't configure defaults -- trust what's in the EEPROM. (NOTE the very first time the arduino runs with
       // EEPROM enabled, the config will be uninitialized and may contain garbage values.
@@ -136,10 +140,14 @@ void config_setup() {
       config_write_byte(presets[0].r_preset.midi_channel, 0);  // "All"
     }
 
-    if (telltale != CONFIG_TELLTALE_1_1) {
+    if (telltale < CONFIG_TELLTALE_1_1) {
       // new config since prior version
       config_write_byte(loop_time_ms, 50);
       config_write_uint16(max_note_length_ms, 2500);
+    }
+    if (telltale < CONFIG_TELLTALE_1_4) {
+      // new config since prior version
+      config_write_uint16(min_note_length_ms, 180);
     }
   }
 
@@ -149,6 +157,7 @@ void config_setup() {
   byte v;
   config_read_byte(v, loop_time_ms);
   loop_time_ms = v;
+  config_read_uint16(min_note_length_ms, min_note_length_ms);
   config_read_uint16(max_note_length_ms, max_note_length_ms);
 
   use_preset(0);
@@ -252,8 +261,11 @@ void config_print() {
   config_printScales();
   Serial.print(", ");
   config_printPresets();
-  Serial.print(", \"maxnotelen\" : ");
+  Serial.print(", \"minnotelen\" : ");
   unsigned short i;
+  config_read_uint16(i, min_note_length_ms);
+  Serial.print(i);
+  Serial.print(", \"maxnotelen\" : ");
   config_read_uint16(i, max_note_length_ms);
   Serial.print(i);
   Serial.print(", \"looptime\" : ");

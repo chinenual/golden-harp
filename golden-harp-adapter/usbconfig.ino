@@ -54,7 +54,11 @@ int set_preset(byte total_n, byte preset_index, JsonObject cfg) {
   Serial.print(F("{\"status\": \"OK\"}"));
 }
 
-int set_timing(unsigned short max_note_length, byte loop_time) {
+int set_timing(unsigned short min_note_length, unsigned short max_note_length, byte loop_time) {
+  config_write_uint16(min_note_length_ms, min_note_length);
+  // we cache the value for quick retrieval in the loop() routine
+  min_note_length_ms = min_note_length;
+
   config_write_uint16(max_note_length_ms, max_note_length);
   // we cache the value for quick retrieval in the loop() routine
   max_note_length_ms = max_note_length;
@@ -79,6 +83,7 @@ void usbconfig_loop() {
         show_version();
 
       } else if (doc[F("cmd")] == F("setdebug")) {
+        // example:  {"cmd": "setdebug", "gen": true, "midi": true, "hw": true}
         debug_enabled = doc[F("gen")].as<bool>();
         debug_midi_enabled = doc[F("midi")].as<bool>();
         debug_hw_enabled = doc[F("hw")].as<bool>();
@@ -94,7 +99,8 @@ void usbconfig_loop() {
         set_scale(doc[F("total_n")].as<int>(), doc[F("n")].as<int>(), doc[F("i")]);
 
       } else if (doc[F("cmd")] == F("settiming")) {
-        set_timing(doc[F("maxnotelen")].as<short>(), doc[F("looptime")].as<int>());
+        // example: {"cmd": "settiming", "minnotelen": 0, "maxnotelen": 2200, "looptime": 15}
+        set_timing(doc[F("minnotelen")].as<short>(), doc[F("maxnotelen")].as<short>(), doc[F("looptime")].as<int>());
 
       } else {
         Serial.print(F("{status: \"ERROR\", msg: \"Invalid cmd\"}"));

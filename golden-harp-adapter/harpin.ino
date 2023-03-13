@@ -254,11 +254,14 @@ int key_to_channel(int key) {
 
 int key_out(int key, unsigned long timestamp) {
   int note_playing = 0;
+
   if (key_scan[key] && (0L != key_state[key])) {
     // already sent - key still depressed
+
     // has the ttl expired?
     unsigned long time_playing = timestamp - key_state[key];
     if (time_playing > max_note_length_ms) {
+      
       // auto expire the note
       key_state[key] = 0L;
       if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
@@ -266,7 +269,7 @@ int key_out(int key, unsigned long timestamp) {
       } else {
         if (debug_midi_enabled) {
           debug_start();
-          Serial.print(F("\"timeout\":"));
+          Serial.print(F("\"> maxtime\":"));
           Serial.print(key, DEC);
           debug_end();
         }
@@ -276,6 +279,7 @@ int key_out(int key, unsigned long timestamp) {
     } else {
       note_playing = 1;
     }
+
   } else if (key_scan[key]) {
     // detected "key down"
     key_state[key] = timestamp;
@@ -285,13 +289,26 @@ int key_out(int key, unsigned long timestamp) {
       midi_note_on(scale_note(key), key_to_channel(key));
       note_playing = 1;
     }
+
   } else if (0L != key_state[key]) {
-    // no longer "down" - so detected "key up"
-    key_state[key] = 0L;
-    if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
-      // nop
+    // was down, but no longer "down" - so detected "key up"
+
+    // is it too soon to allow the note to end?
+    unsigned long time_playing = timestamp - key_state[key];
+    if (time_playing < min_note_length_ms) {
+        if (debug_midi_enabled) {
+          debug_start();
+          Serial.print(F("\"< mintime\":"));
+          Serial.print(key, DEC);
+          debug_end();
+        }
     } else {
-      midi_note_off(scale_note(key), key_to_channel(key));
+      key_state[key] = 0L;
+      if (key >= MIN_MUSIC_KEYBOARD && key <= MAX_MUSIC_KEYBOARD) {
+        // nop
+      } else {
+        midi_note_off(scale_note(key), key_to_channel(key));
+      }
     }
   }
   return note_playing;

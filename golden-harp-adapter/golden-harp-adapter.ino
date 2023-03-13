@@ -58,6 +58,7 @@
 
 // cached loop_time value so we're not reading EEPROM every time around the loop
 unsigned long loop_time_ms;
+unsigned short min_note_length_ms;
 unsigned short max_note_length_ms;
 
 bool debug_enabled;

@@ -2,13 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 )
 
 type Settings struct {
 	SerialPort string
 	SerialBaud uint
+	MinNoteLen int
 	MaxNoteLen int
 	LoopTime   int
 }
@@ -16,6 +16,7 @@ type Settings struct {
 var userSettings = Settings{
 	SerialPort: "COM1",
 	SerialBaud: 9600,
+	MinNoteLen: 180,
 	MaxNoteLen: 2500,
 	LoopTime:   50,
 }
@@ -35,7 +36,7 @@ func LoadSettings(path string) (err error) {
 	}
 
 	var b []byte
-	if b, err = ioutil.ReadFile(settingsPathname); err != nil {
+	if b, err = os.ReadFile(settingsPathname); err != nil {
 		applog.Printf("Error loading settings.  Using defaults %#v: %v\n", userSettings, err)
 		return
 	}
@@ -53,7 +54,7 @@ func SaveSettings() (err error) {
 		applog.Printf("Error saving settings: %v\n", err)
 	}
 	applog.Printf("Save settings %#v to file %s\n", userSettings, settingsPathname)
-	if err = ioutil.WriteFile(settingsPathname, b, 0644); err != nil {
+	if err = os.WriteFile(settingsPathname, b, 0644); err != nil {
 		applog.Printf("Error saving settings: %v\n", err)
 	}
 	return

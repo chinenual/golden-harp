@@ -71,7 +71,7 @@ func readInput() {
 		// already logged of err != nil
 		if err == nil {
 			var data map[string]interface{}
-			if err = json.Unmarshal([]byte(bytes), &data); err != nil {
+			if err = json.Unmarshal(bytes, &data); err != nil {
 				continue
 			}
 			if data["DEBUG"] != nil {

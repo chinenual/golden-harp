@@ -124,26 +124,34 @@ func showSettingsDialog(context winc.Controller) {
 
 	lbl2 := winc.NewLabel(dlg)
 	lbl2.SetPos(10, 50)
-	lbl2.SetText("Max Note Length (ms)")
+	lbl2.SetText("Min Note Length (ms)")
 
 	txt2 := winc.NewEdit(dlg)
-	txt2.SetText(strconv.Itoa(userSettings.MaxNoteLen))
+	txt2.SetText(strconv.Itoa(userSettings.MinNoteLen))
 	txt2.SetPos(130, 50)
 
 	lbl3 := winc.NewLabel(dlg)
 	lbl3.SetPos(10, 80)
-	lbl3.SetText("Note Resolution (ms)")
+	lbl3.SetText("Max Note Length (ms)")
 
 	txt3 := winc.NewEdit(dlg)
-	txt3.SetText(strconv.Itoa(userSettings.LoopTime))
+	txt3.SetText(strconv.Itoa(userSettings.MaxNoteLen))
 	txt3.SetPos(130, 80)
 
+	lbl4 := winc.NewLabel(dlg)
+	lbl4.SetPos(10, 110)
+	lbl4.SetText("Note Resolution (ms)")
+
+	txt4 := winc.NewEdit(dlg)
+	txt4.SetText(strconv.Itoa(userSettings.LoopTime))
+	txt4.SetPos(130, 110)
+
 	cancelBtn := winc.NewPushButton(dlg)
-	cancelBtn.SetPos(100, 110)
+	cancelBtn.SetPos(100, 140)
 	cancelBtn.SetText("Cancel")
 
 	saveBtn := winc.NewPushButton(dlg)
-	saveBtn.SetPos(0, 110)
+	saveBtn.SetPos(0, 140)
 	saveBtn.SetText("Save")
 	//	dlg.SetButtons(saveBtn, cancelBtn)
 
@@ -156,12 +164,18 @@ func showSettingsDialog(context winc.Controller) {
 		setStatus("Not connected", "")
 		userSettings.SerialPort = txt1.Text()
 		var err error
-		if userSettings.MaxNoteLen, err = strconv.Atoi(txt2.Text()); err != nil {
-			applog.Printf("ERROR: could not parse Note Length as integer: %v\n", err)
-			winc.Errorf(dlg, "Error: could not parse Note Length as integer: %v", err)
+		if userSettings.MinNoteLen, err = strconv.Atoi(txt2.Text()); err != nil {
+			applog.Printf("ERROR: could not parse Min Note Length as integer: %v\n", err)
+			winc.Errorf(dlg, "Error: could not parse Min Note Length as integer: %v", err)
 			return
 		}
-		if userSettings.LoopTime, err = strconv.Atoi(txt3.Text()); err != nil {
+		var err error
+		if userSettings.MaxNoteLen, err = strconv.Atoi(txt3.Text()); err != nil {
+			applog.Printf("ERROR: could not parse Max Note Length as integer: %v\n", err)
+			winc.Errorf(dlg, "Error: could not parse Max Note Length as integer: %v", err)
+			return
+		}
+		if userSettings.LoopTime, err = strconv.Atoi(txt4.Text()); err != nil {
 			applog.Printf("ERROR: could not parse Note Resolution as integer: %v\n", err)
 			winc.Errorf(dlg, "Error: could not parse Note Resolution as integer: %v", err)
 			return
