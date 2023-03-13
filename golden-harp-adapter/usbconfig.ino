@@ -15,13 +15,13 @@ void debug_end() {
   }
 }
 
-int show_version() {
+void show_version() {
   Serial.print(F("{\"status\": \"OK\", \"version\": \"" VERSION "\", \"timestamp\": \"" __DATE__ " " __TIME__ "\"}"));
 }
 
-int set_scale(byte total_n, byte scale_index, JsonArray data) {
+void set_scale(byte total_n, byte scale_index, JsonArray data) {
   if (scale_index >= MAX_SCALES) {
-    Serial.print(F("{\status\": \"ERROR\", \"msg\": \"Invalid scale_index. MAX_SCALES = "));
+    Serial.print(F("{\"status\": \"ERROR\", \"msg\": \"Invalid scale_index. MAX_SCALES = "));
     Serial.print(MAX_SCALES, DEC);
     Serial.print(F("\"}"));
     return;
@@ -35,7 +35,7 @@ int set_scale(byte total_n, byte scale_index, JsonArray data) {
   Serial.print(F("{\"status\": \"OK\"}"));
 }
 
-int set_preset(byte total_n, byte preset_index, JsonObject cfg) {
+void set_preset(byte total_n, byte preset_index, JsonObject cfg) {
   if (preset_index >= MAX_PRESETS) {
     Serial.print(F("{\"status\": \"ERROR\", \"msg\": \"Invalid preset_index. MAX_PRESETS = "));
     Serial.print(MAX_PRESETS, DEC);
@@ -54,7 +54,7 @@ int set_preset(byte total_n, byte preset_index, JsonObject cfg) {
   Serial.print(F("{\"status\": \"OK\"}"));
 }
 
-int set_timing(unsigned short min_note_length, unsigned short max_note_length, byte loop_time) {
+void set_timing(unsigned short min_note_length, unsigned short max_note_length, byte loop_time) {
   config_write_uint16(min_note_length_ms, min_note_length);
   // we cache the value for quick retrieval in the loop() routine
   min_note_length_ms = min_note_length;
