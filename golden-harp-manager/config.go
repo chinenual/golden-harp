@@ -103,40 +103,43 @@ func readPresets(f *excelize.File) (err error) {
 		if colVals, err = rows.Columns(); err != nil {
 			return err
 		}
-		if rowNum >= 2 { // first two rows are headers
-			if strings.TrimSpace(colVals[0]) == "" {
-				break
-			}
-			keyPosition, _ = strconv.Atoi(colVals[0])
-			keyPosition -= 1 // one based in the spreadsheet; convert to zero-based
+		fmt.Println(colVals)
+		if len(colVals) > 0 {
+			if rowNum >= 2 { // first two rows are headers
+				if strings.TrimSpace(colVals[0]) == "" {
+					break
+				}
+				keyPosition, _ = strconv.Atoi(colVals[0])
+				keyPosition -= 1 // one based in the spreadsheet; convert to zero-based
 
-			if len(colVals) >= 8 {
-				if strings.TrimSpace(colVals[2]) != "" {
-					var preset Preset
-					preset.KeyPosition = keyPosition
-					if preset.Left.Scale, err = useScale(colVals[2]); err != nil {
-						return err
-					}
-					if preset.Left.Base, err = parseRoot(colVals[3]); err != nil {
-						return err
-					}
-					if preset.Left.Channel, err = parseChannel(colVals[4]); err != nil {
-						return err
-					}
-					if preset.Right.Scale, err = useScale(colVals[6]); err != nil {
-						return err
-					}
-					if preset.Right.Base, err = parseRoot(colVals[7]); err != nil {
-						return err
-					}
-					if len(colVals) > 8 { // channel may be blank and the reader won't include that in the columns
-						if preset.Right.Channel, err = parseChannel(colVals[8]); err != nil {
+				if len(colVals) >= 8 {
+					if strings.TrimSpace(colVals[2]) != "" {
+						var preset Preset
+						preset.KeyPosition = keyPosition
+						if preset.Left.Scale, err = useScale(colVals[2]); err != nil {
 							return err
 						}
-					} else {
-						preset.Right.Channel = 0
+						if preset.Left.Base, err = parseRoot(colVals[3]); err != nil {
+							return err
+						}
+						if preset.Left.Channel, err = parseChannel(colVals[4]); err != nil {
+							return err
+						}
+						if preset.Right.Scale, err = useScale(colVals[6]); err != nil {
+							return err
+						}
+						if preset.Right.Base, err = parseRoot(colVals[7]); err != nil {
+							return err
+						}
+						if len(colVals) > 8 { // channel may be blank and the reader won't include that in the columns
+							if preset.Right.Channel, err = parseChannel(colVals[8]); err != nil {
+								return err
+							}
+						} else {
+							preset.Right.Channel = 0
+						}
+						packedPresets = append(packedPresets, preset)
 					}
-					packedPresets = append(packedPresets, preset)
 				}
 			}
 		}
