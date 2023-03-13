@@ -169,7 +169,6 @@ func showSettingsDialog(context winc.Controller) {
 			winc.Errorf(dlg, "Error: could not parse Min Note Length as integer: %v", err)
 			return
 		}
-		var err error
 		if userSettings.MaxNoteLen, err = strconv.Atoi(txt3.Text()); err != nil {
 			applog.Printf("ERROR: could not parse Max Note Length as integer: %v\n", err)
 			winc.Errorf(dlg, "Error: could not parse Max Note Length as integer: %v", err)
@@ -368,14 +367,14 @@ func WindowsUI() {
 				}
 			}
 			updateProgressBar(6)
-			if presets, scales, maxNoteLen, loopTime, err := CmdGetConfig(); err != nil {
+			if presets, scales, minNoteLen, maxNoteLen, loopTime, err := CmdGetConfig(); err != nil {
 				applog.Printf("ERROR: could not get config from Arduino %v\n", err)
 				winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
 				return
 			} else {
 				applog.Printf("presets: %#v\n", presets)
 				applog.Printf("scales: %#v\n", scales)
-				applog.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
+				applog.Printf("minnotelen: %d maxnotelen: %d looplen: %d\n", minNoteLen, maxNoteLen, loopTime)
 				drawPresets(ls, presets, scales)
 			}
 
