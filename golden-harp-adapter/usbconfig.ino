@@ -99,7 +99,7 @@ void usbconfig_loop() {
         set_scale(doc[F("total_n")].as<int>(), doc[F("n")].as<int>(), doc[F("i")]);
 
       } else if (doc[F("cmd")] == F("settiming")) {
-        // example: {"cmd": "settiming", "minnotelen": 0, "maxnotelen": 2200, "looptime": 15}
+        // example: {"cmd": "settiming", "minnotelen": 180, "maxnotelen": 2200, "looptime": 15}
         set_timing(doc[F("minnotelen")].as<short>(), doc[F("maxnotelen")].as<short>(), doc[F("looptime")].as<int>());
 
       } else {
