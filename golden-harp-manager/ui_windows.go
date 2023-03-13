@@ -304,14 +304,14 @@ func WindowsUI() {
 
 		updateProgressBar(3)
 
-		if presets, scales, maxNoteLen, loopTime, err := CmdGetConfig(); err != nil {
+		if presets, scales, minNoteLen, maxNoteLen, loopTime, err := CmdGetConfig(); err != nil {
 			applog.Printf("ERROR: could not get config from Arduino %v\n", err)
 			winc.Errorf(mainWindow, "Error: could not get config from Arduino: %v", err)
 			return
 		} else {
 			applog.Printf("presets: %#v\n", presets)
 			applog.Printf("scales: %#v\n", scales)
-			applog.Printf("maxnotelen: %d looplen: %d\n", maxNoteLen, loopTime)
+			applog.Printf("minnotelen: %d maxnotelen: %d looplen: %d\n", minNoteLen, maxNoteLen, loopTime)
 			drawPresets(ls, presets, scales)
 		}
 		return
