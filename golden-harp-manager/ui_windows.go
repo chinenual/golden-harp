@@ -345,7 +345,7 @@ func WindowsUI() {
 			}
 
 			updateProgressBar(3)
-			if err := CmdSetTimingParams(userSettings.MaxNoteLen, userSettings.LoopTime); err != nil {
+			if err := CmdSetTimingParams(userSettings.MinNoteLen, userSettings.MaxNoteLen, userSettings.LoopTime); err != nil {
 				applog.Printf("ERROR: could not set timing params: %v\n", err)
 				winc.Errorf(mainWindow, "Error: could not set timing params: %v", err)
 			}
