@@ -21,9 +21,10 @@ Adapter:
 
 * Added a pull down resistor to the Harp In serial connection
 * min_note_length_ms parameter
-??????* Verbose debug mode
 
 ## 1.3.0
+
+Manager:
 
 * Adds support for enabling debugging on the arduino 
 * Serial config is now async via a goroutine so we can consume DEBUG stream
