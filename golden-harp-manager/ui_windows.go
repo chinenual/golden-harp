@@ -349,7 +349,6 @@ func WindowsUI() {
 				applog.Printf("ERROR: could not set timing params: %v\n", err)
 				winc.Errorf(mainWindow, "Error: could not set timing params: %v", err)
 			}
-
 			updateProgressBar(4)
 			for i, _ := range packedScales {
 				if err := CmdSetScale(len(packedScales), i, packedScales[i]); err != nil {

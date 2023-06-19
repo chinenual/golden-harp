@@ -82,7 +82,7 @@ func CmdSetTimingParams(minNoteLen int, maxNoteLen int, loopTime int) (err error
 		return
 	}
 
-	if data["stat"].(string) != "OK" {
+	if data["status"].(string) != "OK" {
 		err = errors.Errorf("%s", data["msg"].(string))
 		applog.Printf("ERROR: %v\n", err)
 		return
