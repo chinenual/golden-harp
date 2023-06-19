@@ -31,6 +31,9 @@ type Preset struct {
 
 func LoadConfig(filename string) (err error) {
 	scaleMap = make(map[string]Scale)
+	packedScales = []Scale{}
+	packedPresets = []Preset{}
+	
 	var f *excelize.File
 	if f, err = excelize.OpenFile(filename); err != nil {
 		return
@@ -43,9 +46,9 @@ func LoadConfig(filename string) (err error) {
 		return
 	}
 
-	//fmt.Printf("Scales: %v\n", scaleMap)
-	//fmt.Printf("PackedScales: %#v\n", packedScales)
-	//fmt.Printf("PackedPresets: %#v\n", packedPresets)
+	applog.Printf("Scales: %v\n", scaleMap)
+	applog.Printf("PackedScales: %d: %#v\n", len(packedScales), packedScales)
+	applog.Printf("PackedPresets: %d: %#v\n", len(packedPresets), packedPresets)
 	return
 }
 

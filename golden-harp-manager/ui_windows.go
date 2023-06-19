@@ -362,7 +362,7 @@ func WindowsUI() {
 			for i, _ := range packedPresets {
 				if err := CmdSetPreset(len(packedPresets), i, packedPresets[i]); err != nil {
 					applog.Printf("ERROR: could not get send preset config to Arduino %v\n", err)
-					winc.Errorf(mainWindow, "Error: could not get send preset config to Arduino: %v", err)
+					winc.Errorf(mainWindow, "Error: could not send preset config to Arduino: %v", err)
 					return
 				}
 			}

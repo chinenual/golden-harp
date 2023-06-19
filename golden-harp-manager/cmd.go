@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"github.com/pkg/errors"
 )
 
 func CmdVersion() (version string, timestamp string, err error) {
@@ -52,6 +53,7 @@ func CmdGetConfig() (presets []Preset, scales []Scale, minNoteLen int, maxNoteLe
 	loopTime = config.LoopTime
 	return
 }
+
 func CmdSetTimingParams(minNoteLen int, maxNoteLen int, loopTime int) (err error) {
 	val := struct {
 		Cmd        string `json:"cmd"`
@@ -72,6 +74,16 @@ func CmdSetTimingParams(minNoteLen int, maxNoteLen int, loopTime int) (err error
 		return
 	}
 	if bytes, err = SerialReadResponse(); err != nil {
+		applog.Printf("ERROR: %v\n", err)
+		return
+	}
+	var data map[string]interface{}
+	if err = json.Unmarshal(bytes, &data); err != nil {
+		return
+	}
+
+	if data["stat"].(string) != "OK" {
+		err = errors.Errorf("%s", data["msg"].(string))
 		applog.Printf("ERROR: %v\n", err)
 		return
 	}
@@ -102,6 +114,16 @@ func CmdSetScale(total int, index int, scale Scale) (err error) {
 		applog.Printf("ERROR: %v\n", err)
 		return
 	}
+	var data map[string]interface{}
+	if err = json.Unmarshal(bytes, &data); err != nil {
+		return
+	}
+
+	if data["status"].(string) != "OK" {
+		err = errors.Errorf("%s", data["msg"].(string))
+		applog.Printf("ERROR: %v\n", err)
+		return
+	}
 	return
 }
 
@@ -129,6 +151,16 @@ func CmdSetPreset(total int, index int, preset Preset) (err error) {
 		applog.Printf("ERROR: %v\n", err)
 		return
 	}
+	var data map[string]interface{}
+	if err = json.Unmarshal(bytes, &data); err != nil {
+		return
+	}
+
+	if data["status"].(string) != "OK" {
+		err = errors.Errorf("%s", data["msg"].(string))
+		applog.Printf("ERROR: %v\n", err)
+		return
+	}
 	return
 }
 func CmdSetDebug(general, midi, hw bool) (err error) {
@@ -152,6 +184,17 @@ func CmdSetDebug(general, midi, hw bool) (err error) {
 		return
 	}
 	if bytes, err = SerialReadResponse(); err != nil {
+		applog.Printf("ERROR: %v\n", err)
+		return
+	}
+
+	var data map[string]interface{}
+	if err = json.Unmarshal(bytes, &data); err != nil {
+		return
+	}
+
+	if data["status"].(string) != "OK" {
+		err = errors.Errorf("%s", data["msg"].(string))
 		applog.Printf("ERROR: %v\n", err)
 		return
 	}
