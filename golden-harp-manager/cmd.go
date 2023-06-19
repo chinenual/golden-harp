@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"os"
 	"github.com/pkg/errors"
+	"os"
 )
 
 func CmdVersion() (version string, timestamp string, err error) {

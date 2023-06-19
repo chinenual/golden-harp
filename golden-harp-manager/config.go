@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -33,7 +32,7 @@ func LoadConfig(filename string) (err error) {
 	scaleMap = make(map[string]Scale)
 	packedScales = []Scale{}
 	packedPresets = []Preset{}
-	
+
 	var f *excelize.File
 	if f, err = excelize.OpenFile(filename); err != nil {
 		return
