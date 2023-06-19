@@ -9,7 +9,7 @@ Manager:
 
 Adapter:
 
-Fixes the firmware upload script and re-versions the firmware
+* Fixes the firmware upload script and re-versions the firmware
 
 ## 1.4.0
 
@@ -50,6 +50,6 @@ Adapter:
 
 * make loop time and max_note_length_ms times configurable via the Manager
 
-# 1.0.0
+## 1.0.0
 
 First release
