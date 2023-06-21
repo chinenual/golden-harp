@@ -80,7 +80,7 @@ func readInput() {
 			} else {
 				inputChan <- bytes
 				// let the other coroutine wake up
-				time.Sleep(2000 * time.Millisecond)
+				time.Sleep(1 * time.Millisecond)
 			}
 		}
 	}
