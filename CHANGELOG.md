@@ -1,3 +1,9 @@
+## 1.5.1
+
+Manager:
+
+* Removes excessive delay on command read loop (speeds up setconfig considerably)
+
 ## 1.5.0
 
 Manager:
